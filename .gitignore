@@ -1,0 +1,23 @@
+# IDE
+.idea/
+
+# Python cache and build artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Virtual environments
+.venv/
+venv/
+
+# Dataset and checkpoints
+data/
+*.pth
+*.pt
+*.ckpt
+
+# Training logs
+runs/
+tensorboard/

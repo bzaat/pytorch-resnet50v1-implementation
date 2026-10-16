@@ -1,0 +1,138 @@
+import os
+from argparse import ArgumentParser
+
+import torch.nn as nn
+import torch.optim
+from torch.utils.data import DataLoader
+from torchvision.transforms.v2 import ToTensor, Resize, Compose
+from torch.utils.tensorboard import SummaryWriter
+from tqdm import tqdm
+
+from models import SimpleNeuralNetwork
+from oxiii_pet.dataset.dataset_oxiiit_pet import OxfordData
+
+
+def get_args():
+    parser = ArgumentParser(description="CNN IN Oxiii Pet")
+    parser.add_argument("--epochs","-e", type=int, default=10, help="number of epochs")
+    parser.add_argument("--batch_size","-b", type=int, default=8, help="batch size")
+    parser.add_argument("--dir","-d", type=str, default=os.getenv("DATA_DIR", "data"), help="data path")
+    parser.add_argument("--logging","-l", type=str, default="tensorboard")
+    args = parser.parse_args()
+    return args
+
+def main():
+    args = get_args()
+    num_epochs = args.epochs
+    DATA_DIR = args.dir
+
+    transform = Compose([
+        Resize((224, 224)),
+        ToTensor()
+    ])
+    train_data = OxfordData(DATA_DIR, train=True, transform=transform)
+    train_dataloader = DataLoader(
+        dataset=train_data,
+        batch_size=args.batch_size,
+        num_workers=4,
+        drop_last=True,
+        shuffle=True
+    )
+    test_data = OxfordData(DATA_DIR, train=False, transform=transform)
+    test_dataloader = DataLoader(
+        dataset=test_data,
+        batch_size=args.batch_size,
+        num_workers=4,
+        drop_last=False,
+        shuffle=False
+    )
+    writer = SummaryWriter(args.logging)
+    model = SimpleNeuralNetwork()
+    criterion = nn.CrossEntropyLoss()
+    optimizer = torch.optim.SGD(
+        model.parameters(),
+        lr=1e-3,
+        momentum=0.9
+    )
+    desc_text = "\033[1;36m[Epoch 1/10] Training Model...\033[0m"
+    num_iters = len(train_dataloader)
+    if torch.cuda.is_available():
+        model.cuda()
+    best_val_accuracy = 0.0
+    for epoch in range(num_epochs):
+        model.train()
+        progress_bar = tqdm(train_dataloader,desc=desc_text,colour="green")
+        for i, (images, labels) in enumerate(progress_bar):
+            if torch.cuda.is_available():
+                images = images.cuda()
+                labels = labels.cuda()
+            # forward pass
+            output = model(images)
+            loss_value = criterion(output, labels)
+            progress_bar.set_description("Epoch {}/{}. Iteration {}/{}. Loss {}".format(epoch + 1, num_epochs, i, num_iters, loss_value))
+            writer.add_scalar("Train/Loss", loss_value, i + (epoch * num_iters))
+            # backward & optimize
+            optimizer.zero_grad()
+            loss_value.backward()
+            optimizer.step()
+
+        # model.eval()
+        # all_predictions = []
+        # all_labels = []
+        # for i, (images, labels) in enumerate(test_dataloader):
+        #     all_labels.append(labels)
+        #     if torch.cuda.is_available():
+        #         images = images.cuda()
+        #         labels = labels.cuda()
+        #     with torch.no_grad():
+        #         predictions = model(images)
+        #         all_predictions.append(predictions)
+        #         loss_value = criterion(predictions, labels)
+        model.eval()
+
+        all_predictions = []
+        all_labels = []
+        total_val_loss = 0.0
+        num_samples = 0
+
+        with torch.no_grad():
+            for images, labels in test_dataloader:
+                images = images.cuda()
+                labels = labels.cuda()
+
+                predictions = model(images)
+                loss_value = criterion(predictions, labels)
+
+                batch_size = labels.size(0)
+                total_val_loss += loss_value.item() * batch_size
+                num_samples += batch_size
+
+                all_predictions.append(predictions.argmax(dim=1))
+                all_labels.append(labels)
+
+        val_loss = total_val_loss / num_samples
+        all_predictions = torch.cat(all_predictions)
+        all_labels = torch.cat(all_labels)
+
+        val_accuracy = (all_predictions == all_labels).float().mean().item()
+        if val_accuracy > best_val_accuracy:
+            best_val_accuracy = val_accuracy
+            torch.save({
+                "epoch": epoch + 1,
+                "model_state_dict": model.state_dict(),
+                "best_val_accuracy": best_val_accuracy,
+            }, "best_model.pth")
+            print(f"Saved best model! Val Accuracy: {best_val_accuracy:.4f}")
+
+        writer.add_scalar("Validation/Loss", val_loss, epoch)
+        writer.add_scalar("Validation/Accuracy", val_accuracy, epoch)
+
+        print(
+            f"Epoch {epoch + 1}/{num_epochs} | "
+            f"Val Loss: {val_loss:.4f} | "
+            f"Val Accuracy: {val_accuracy:.4f}"
+        )
+    writer.close()
+
+if __name__ == '__main__':
+    main()
