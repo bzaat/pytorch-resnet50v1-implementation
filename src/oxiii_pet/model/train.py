@@ -21,6 +21,23 @@ def get_args():
     args = parser.parse_args()
     return args
 
+def initialize_weights(model):
+    for module in model.modules():
+        if isinstance(module, nn.Conv2d):
+            nn.init.kaiming_normal_(
+                module.weight,
+                mode="fan_out",
+                nonlinearity="relu"
+            )
+
+        elif isinstance(module, nn.BatchNorm2d):
+            nn.init.constant_(module.weight, 1)
+            nn.init.constant_(module.bias, 0)
+
+        elif isinstance(module, nn.Linear):
+            nn.init.normal_(module.weight, 0, 0.01)
+            nn.init.constant_(module.bias, 0)
+
 def main():
     args = get_args()
     num_epochs = args.epochs
@@ -48,20 +65,22 @@ def main():
     )
     writer = SummaryWriter(args.logging)
     model = SimpleNeuralNetwork()
+    initialize_weights(model)
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.SGD(
         model.parameters(),
         lr=1e-3,
         momentum=0.9
     )
-    desc_text = "\033[1;36m[Epoch 1/10] Training Model...\033[0m"
+    # desc_text = "\033[1;36m[Epoch 1/10] Training Model...\033[0m"
     num_iters = len(train_dataloader)
     if torch.cuda.is_available():
         model.cuda()
     best_val_accuracy = 0.0
     for epoch in range(num_epochs):
         model.train()
-        progress_bar = tqdm(train_dataloader,desc=desc_text,colour="green")
+        # progress_bar = tqdm(train_dataloader,desc=desc_text,colour="green")
+        progress_bar = tqdm(train_dataloader, desc=f"Epoch {epoch + 1}/{num_epochs}", colour="green")
         for i, (images, labels) in enumerate(progress_bar):
             if torch.cuda.is_available():
                 images = images.cuda()

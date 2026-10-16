@@ -6,8 +6,10 @@ class SimpleNeuralNetwork(nn.Module):
         super().__init__()
         # self.flatten = nn.Flatten()
         self.stem = nn.Sequential(
-            nn.Conv2d(3,64,7,stride=2,),
-            nn.MaxPool2d(3,2)
+            nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3, bias=False),
+            nn.BatchNorm2d(64),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
         )
         self.flatten = nn.Flatten()
         self.relu = nn.ReLU()
