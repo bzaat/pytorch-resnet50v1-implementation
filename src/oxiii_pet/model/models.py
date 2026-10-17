@@ -1,9 +1,6 @@
 import torch.nn as nn
 
 
-import torch.nn as nn
-
-
 class Bottleneck(nn.Module):
     expansion = 4
 
@@ -80,7 +77,7 @@ def make_layer(in_channels, bottleneck_channels, num_blocks, stride=1):
 
 
 
-class SimpleNeuralNetwork(nn.Module):
+class Resnet50(nn.Module):
     def __init__(self, num_classes=37):
         super().__init__()
 
