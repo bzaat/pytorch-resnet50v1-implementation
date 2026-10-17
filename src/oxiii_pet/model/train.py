@@ -80,11 +80,8 @@ def main():
     model = Resnet50()
     initialize_weights(model)
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.SGD(
-        model.parameters(),
-        lr=1e-3,
-        momentum=0.9
-    )
+    optimizer = torch.optim.SGD(model.parameters(), lr=1e-2, momentum=0.9, weight_decay=1e-4)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs)
     # desc_text = "\033[1;36m[Epoch 1/10] Training Model...\033[0m"
     num_iters = len(train_dataloader)
     if torch.cuda.is_available():
@@ -120,6 +117,7 @@ def main():
         #         predictions = model(images)
         #         all_predictions.append(predictions)
         #         loss_value = criterion(predictions, labels)
+        scheduler.step()
         model.eval()
 
         all_predictions = []
