@@ -232,17 +232,37 @@ print(f"Best accuracy {checkpoint['best_val_accuracy']:.4f} at epoch {checkpoint
 | Optimizer | SGD, learning rate `1e-3`, momentum `0.9` |
 | Weight init | Kaiming normal (convolutions), BatchNorm weight 1 / bias 0, Linear `N(0, 0.01)` |
 | Input | Resize to 224 × 224, `ToTensor` |
+| Normalization / augmentation | None (baseline) |
 | DataLoader | 4 workers, `drop_last=True` for training |
 | Evaluation | Test split, once per epoch |
 | Output classes | 37 |
 
 ## Roadmap
 
-- [x] Custom `Dataset` and `DataLoader` for Oxford-IIIT Pet
+**Current status:** the full pipeline (data → model → training → logging → checkpointing) works end to end for 37-class breed classification. The project is now in the **baseline training** phase: the current setup deliberately uses no input normalization and no augmentation, so later improvements can be measured against it.
+
+Early baseline numbers (batch size 32, learning rate `1e-3`, partial run, to be replaced by the final results):
+
+| Epoch | Val loss | Val accuracy |
+|:-----:|:--------:|:------------:|
+| 1 | 3.955 | 3.1% |
+| 5 | 3.738 | 3.5% |
+| 10 | 3.639 | 6.7% |
+
+Random guessing over 37 classes gives about 2.7% accuracy and a loss of about 3.61.
+
+**Done**
+
+- [x] Custom `Dataset` and `DataLoader` for Oxford-IIIT Pet (37 classes)
 - [x] ResNet-50 implemented from scratch
 - [x] Training loop with TensorBoard logging and best-model checkpointing
+- [x] Installable package (`pip install -e .`) and minimal `requirements.txt`
+
+**Next**
+
 - [ ] Input normalization and data augmentation
 - [ ] Learning-rate scheduling
+- [ ] Device-agnostic training and evaluation (CPU fallback)
 - [ ] Dedicated validation split
 - [ ] Inference script for single images
 - [ ] Benchmark against `torchvision` pretrained ResNet-50
