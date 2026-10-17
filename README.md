@@ -172,12 +172,13 @@ python src/oxiii_pet/dataset/dataloader_oxiii_pet.py
 Or use the dataset directly in Python:
 
 ```python
+import torch
 from torch.utils.data import DataLoader
-from torchvision.transforms.v2 import Compose, Resize, ToTensor
+from torchvision.transforms.v2 import Compose, Resize, ToDtype, ToImage
 
 from oxiii_pet.dataset.dataset_oxiiit_pet import OxfordData
 
-transform = Compose([Resize((224, 224)), ToTensor()])
+transform = Compose([Resize((224, 224)), ToImage(), ToDtype(torch.float32, scale=True)])
 
 train_set = OxfordData("data", train=True, transform=transform)
 loader = DataLoader(train_set, batch_size=16, shuffle=True, num_workers=4, drop_last=True)
@@ -229,19 +230,20 @@ print(f"Best accuracy {checkpoint['best_val_accuracy']:.4f} at epoch {checkpoint
 | Component | Setting |
 |-----------|---------|
 | Loss | `CrossEntropyLoss` |
-| Optimizer | SGD, learning rate `1e-3`, momentum `0.9` |
+| Optimizer | SGD, learning rate `1e-2`, momentum `0.9`, weight decay `1e-4` |
+| LR schedule | `CosineAnnealingLR` over all epochs (`T_max` = number of epochs), stepped once per epoch |
 | Weight init | Kaiming normal (convolutions), BatchNorm weight 1 / bias 0, Linear `N(0, 0.01)` |
-| Input | Resize to 224 × 224, `ToTensor` |
-| Normalization / augmentation | None (baseline) |
+| Train transforms | `RandomResizedCrop(224, scale=(0.6, 1.0))`, `RandomHorizontalFlip`, ImageNet mean/std normalization |
+| Test transforms | `Resize((224, 224))`, ImageNet mean/std normalization |
 | DataLoader | 4 workers, `drop_last=True` for training |
 | Evaluation | Test split, once per epoch |
 | Output classes | 37 |
 
 ## Roadmap
 
-**Current status:** the full pipeline (data → model → training → logging → checkpointing) works end to end for 37-class breed classification. The project is now in the **baseline training** phase: the current setup deliberately uses no input normalization and no augmentation, so later improvements can be measured against it.
+**Current status:** the full pipeline (data → model → training → logging → checkpointing) works end to end for 37-class breed classification. A first baseline run without input normalization or augmentation was recorded; the training script now includes both, plus a higher initial learning rate with cosine decay and weight decay. The next step is to re-train and compare against that baseline.
 
-Early baseline numbers (batch size 32, learning rate `1e-3`, partial run, to be replaced by the final results):
+Baseline run without normalization or augmentation (batch size 32, learning rate `1e-3`, first 10 epochs of a partial run):
 
 | Epoch | Val loss | Val accuracy |
 |:-----:|:--------:|:------------:|
@@ -257,8 +259,12 @@ Random guessing over 37 classes gives about 2.7% accuracy and a loss of about 3.
 - [x] ResNet-50 implemented from scratch
 - [x] Training loop with TensorBoard logging and best-model checkpointing
 - [x] Installable package (`pip install -e .`) and minimal `requirements.txt`
-- [x] Input normalization and data augmentation
-- [x] Learning-rate scheduling
+- [x] Input normalization and data augmentation (ImageNet mean/std, random resized crop, horizontal flip)
+- [x] Cosine learning-rate schedule and weight decay
+
+**In progress**
+
+- [ ] Re-train with normalization and augmentation and compare against the baseline
 
 **Next**
 
