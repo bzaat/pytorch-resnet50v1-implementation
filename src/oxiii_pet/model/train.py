@@ -4,7 +4,10 @@ from argparse import ArgumentParser
 import torch.nn as nn
 import torch.optim
 from torch.utils.data import DataLoader
-from torchvision.transforms.v2 import ToTensor, Resize, Compose
+from torchvision.transforms.v2 import (
+    Compose, Resize, RandomResizedCrop, RandomHorizontalFlip,
+    ToImage, ToDtype, Normalize,
+)
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
@@ -43,11 +46,21 @@ def main():
     num_epochs = args.epochs
     DATA_DIR = args.dir
 
-    transform = Compose([
-        Resize((224, 224)),
-        ToTensor()
+    normalize = Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    train_transform = Compose([
+        RandomResizedCrop(224, scale=(0.6, 1.0)),
+        RandomHorizontalFlip(),
+        ToImage(),
+        ToDtype(torch.float32, scale=True),
+        normalize,
     ])
-    train_data = OxfordData(DATA_DIR, train=True, transform=transform)
+    test_transform = Compose([
+        Resize((224, 224)),
+        ToImage(),
+        ToDtype(torch.float32, scale=True),
+        normalize,
+    ])
+    train_data = OxfordData(DATA_DIR, train=True, transform=train_transform)
     train_dataloader = DataLoader(
         dataset=train_data,
         batch_size=args.batch_size,
@@ -55,7 +68,7 @@ def main():
         drop_last=True,
         shuffle=True
     )
-    test_data = OxfordData(DATA_DIR, train=False, transform=transform)
+    test_data = OxfordData(DATA_DIR, train=False, transform=test_transform)
     test_dataloader = DataLoader(
         dataset=test_data,
         batch_size=args.batch_size,

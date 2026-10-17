@@ -257,11 +257,11 @@ Random guessing over 37 classes gives about 2.7% accuracy and a loss of about 3.
 - [x] ResNet-50 implemented from scratch
 - [x] Training loop with TensorBoard logging and best-model checkpointing
 - [x] Installable package (`pip install -e .`) and minimal `requirements.txt`
+- [x] Input normalization and data augmentation
+- [x] Learning-rate scheduling
 
 **Next**
 
-- [ ] Input normalization and data augmentation
-- [ ] Learning-rate scheduling
 - [ ] Device-agnostic training and evaluation (CPU fallback)
 - [ ] Dedicated validation split
 - [ ] Inference script for single images
