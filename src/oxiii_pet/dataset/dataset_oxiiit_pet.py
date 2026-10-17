@@ -11,9 +11,9 @@ class OxfordData(Dataset):
             df = pd.read_csv(os.path.join(root,'annotations', 'trainval.txt'),sep=r'\s+', header= None)
         else:
             df = pd.read_csv(os.path.join(root, 'annotations', 'test.txt'),sep=r'\s+', header= None)
-        df = df.drop(df.columns[[1,3]], axis=1)
-        self.image_path = [os.path.join(root,"images", str(name) + '.jpg') for name in df[0].tolist()]
-        self.labels = (df[2]-1).tolist()
+        df = df.drop(df.columns[[2, 3]], axis=1)
+        self.image_path = [os.path.join(root, "images", str(name) + ".jpg") for name in df[0].tolist()]
+        self.labels = (df[1] - 1).tolist()
 
 
     def __len__(self):
@@ -26,5 +26,9 @@ class OxfordData(Dataset):
             image = self.transform(image)
         label = self.labels[item]
         return image, label
+
+def main():
+    ds = OxfordData("../../../data", train=True)
+    print(min(ds.labels), max(ds.labels), len(set(ds.labels)))  # 0 36 37
 if __name__ == '__main__':
-    pass
+    main()

@@ -8,7 +8,7 @@ from torchvision.transforms.v2 import ToTensor, Resize, Compose
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
-from models import SimpleNeuralNetwork
+from oxiii_pet.model.models import Resnet50
 from oxiii_pet.dataset.dataset_oxiiit_pet import OxfordData
 
 
@@ -64,7 +64,7 @@ def main():
         shuffle=False
     )
     writer = SummaryWriter(args.logging)
-    model = SimpleNeuralNetwork()
+    model = Resnet50()
     initialize_weights(model)
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.SGD(
