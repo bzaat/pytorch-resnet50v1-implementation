@@ -1,155 +1,132 @@
 import torch.nn as nn
 
 
-class SimpleNeuralNetwork(nn.Module):
-    def __init__(self):
+import torch.nn as nn
+
+
+class Bottleneck(nn.Module):
+    expansion = 4
+
+    def __init__(self, in_channels, bottleneck_channels, stride=1):
         super().__init__()
-        # self.flatten = nn.Flatten()
+
+        out_channels = bottleneck_channels * self.expansion
+
+        # Main branch: 1x1 -> 3x3 -> 1x1
+        self.residual = nn.Sequential(
+            nn.Conv2d(
+                in_channels, bottleneck_channels,
+                kernel_size=1, bias=False
+            ),
+            nn.BatchNorm2d(bottleneck_channels),
+            nn.ReLU(inplace=True),
+
+            nn.Conv2d(
+                bottleneck_channels, bottleneck_channels,
+                kernel_size=3, stride=stride,
+                padding=1, bias=False
+            ),
+            nn.BatchNorm2d(bottleneck_channels),
+            nn.ReLU(inplace=True),
+
+            nn.Conv2d(
+                bottleneck_channels, out_channels,
+                kernel_size=1, bias=False
+            ),
+            nn.BatchNorm2d(out_channels)
+        )
+
+        # Shortcut branch
+        if stride != 1 or in_channels != out_channels:
+            self.shortcut = nn.Sequential(
+                nn.Conv2d(
+                    in_channels, out_channels,
+                    kernel_size=1, stride=stride, bias=False
+                ),
+                nn.BatchNorm2d(out_channels)
+            )
+        else:
+            self.shortcut = nn.Identity()
+
+        self.relu = nn.ReLU(inplace=True)
+
+    def forward(self, x):
+        identity = self.shortcut(x)
+        out = self.residual(x)
+        out += identity
+        out = self.relu(out)
+        return out
+
+def make_layer(in_channels, bottleneck_channels, num_blocks, stride=1):
+    layers = [
+        Bottleneck(
+            in_channels=in_channels,
+            bottleneck_channels=bottleneck_channels,
+            stride=stride
+        )
+    ]
+
+    out_channels = bottleneck_channels * Bottleneck.expansion
+
+    for _ in range(1, num_blocks):
+        layers.append(
+            Bottleneck(
+                in_channels=out_channels,
+                bottleneck_channels=bottleneck_channels
+            )
+        )
+
+    return nn.Sequential(*layers)
+
+
+
+class SimpleNeuralNetwork(nn.Module):
+    def __init__(self, num_classes=37):
+        super().__init__()
+
         self.stem = nn.Sequential(
-            nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3, bias=False),
+            nn.Conv2d(
+                3, 64, kernel_size=7,
+                stride=2, padding=3, bias=False
+            ),
             nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+            nn.MaxPool2d(
+                kernel_size=3, stride=2, padding=1
+            )
         )
-        self.flatten = nn.Flatten()
-        self.relu = nn.ReLU()
+
+        self.conv2_x = make_layer(
+            64, 64, num_blocks=3
+        )
+        self.conv3_x = make_layer(
+            256, 128, num_blocks=4, stride=2
+        )
+        self.conv4_x = make_layer(
+            512, 256, num_blocks=6, stride=2
+        )
+        self.conv5_x = make_layer(
+            1024, 512, num_blocks=3, stride=2
+        )
+
         self.fc = nn.Sequential(
             nn.AdaptiveAvgPool2d((1, 1)),
             nn.Flatten(),
             nn.Dropout(p=0.5),
-            nn.Linear(in_features=2048, out_features=37)
+            nn.Linear(2048, num_classes)
         )
-        self.conv2_x1, self.shortcut2_x1 = self.make_block(in_channels= 64,out_channels=64,last_out=256)
-        self.conv2_x2, self.shortcut2_x2 = self.make_block(in_channels= 256,out_channels=64,last_out=256)
-        self.conv2_x3, self.shortcut2_x3 = self.make_block(in_channels= 256,out_channels=64,last_out=256)
 
-        self.conv3_x1, self.shortcut3_x1 = self.make_block(in_channels= 256,out_channels=128,last_out=512, first_block=True)
-        self.conv3_x2, self.shortcut3_x2 = self.make_block(in_channels= 512,out_channels=128,last_out=512)
-        self.conv3_x3, self.shortcut3_x3 = self.make_block(in_channels= 512,out_channels=128,last_out=512)
-        self.conv3_x4,self.shortcut3_x4  = self.make_block(in_channels= 512,out_channels=128,last_out=512)
-
-        self.conv4_x1, self.shortcut4_x1 = self.make_block(in_channels= 512,out_channels=256,last_out=1024, first_block=True)
-        self.conv4_x2, self.shortcut4_x2 = self.make_block(in_channels= 1024,out_channels=256,last_out=1024)
-        self.conv4_x3, self.shortcut4_x3 = self.make_block(in_channels= 1024,out_channels=256,last_out=1024)
-        self.conv4_x4, self.shortcut4_x4 = self.make_block(in_channels= 1024,out_channels=256,last_out=1024)
-        self.conv4_x5, self.shortcut4_x5 = self.make_block(in_channels= 1024,out_channels=256,last_out=1024)
-        self.conv4_x6, self.shortcut4_x6 = self.make_block(in_channels= 1024,out_channels=256,last_out=1024)
-
-        self.conv5_x1, self.shortcut5_x1 = self.make_block(in_channels= 1024,out_channels=512,last_out=2048, first_block=True)
-        self.conv5_x2, self.shortcut5_x2 = self.make_block(in_channels= 2048,out_channels=512,last_out=2048)
-        self.conv5_x3, self.shortcut5_x3 = self.make_block(in_channels= 2048,out_channels=512,last_out=2048)
-
-    def make_block(self,in_channels,out_channels,last_out, first_block = False):
-        stride = 1
-        padding = "same"
-        if first_block:
-            stride = 2
-            padding = 1
-        residual = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, 1,stride=1, padding="same"),
-            nn.BatchNorm2d(out_channels),
-            nn.ReLU(),
-
-            nn.Conv2d(out_channels, out_channels, 3,stride=stride, padding=padding),
-            nn.BatchNorm2d(out_channels),
-            nn.ReLU(),
-
-            nn.Conv2d(out_channels, last_out, 1,stride=1, padding="same"),
-            nn.BatchNorm2d(last_out)
-        )
-        if in_channels != last_out or first_block:
-            shortcut = nn.Sequential(
-                nn.Conv2d(in_channels, last_out, 1,stride= stride , bias=False),
-                nn.BatchNorm2d(last_out),
-            )
-        else:
-            shortcut = nn.Identity()
-
-        return residual, shortcut
-
-    def forward(self,x):
+    def forward(self, x):
         x = self.stem(x)
-# Stage 1
-        identity = self.shortcut2_x1(x)           #shape_x N = 64
-        x = self.conv2_x1(x)
-        x+= identity
-        x = self.relu(x)
 
-        identity = self.shortcut2_x2(x)
-        x = self.conv2_x2(x)
-        x += identity
-        x = self.relu(x)
+        x = self.conv2_x(x)
+        x = self.conv3_x(x)
+        x = self.conv4_x(x)
+        x = self.conv5_x(x)
 
-        identity = self.shortcut2_x3(x)
-        x = self.conv2_x3(x)     #shape_x N =256
-        x+= identity             #skip connection
-        x = self.relu(x)
-
-        identity = self.shortcut3_x1(x)
-        x = self.conv3_x1(x)
-        x += identity
-        x = self.relu(x)
-
-        identity = self.shortcut3_x2(x)
-        x = self.conv3_x2(x)
-        x += identity
-        x = self.relu(x)
-
-        identity = self.shortcut3_x3(x)
-        x = self.conv3_x3(x)
-        x += identity
-        x = self.relu(x)
-
-        identity = self.shortcut3_x4(x)
-        x = self.conv3_x4(x)    #shape_x N = 512
-        x += identity
-        x = self.relu(x)
-
-        identity = self.shortcut4_x1(x)
-        x = self.conv4_x1(x)
-        x += identity
-        x = self.relu(x)
-
-        identity = self.shortcut4_x2(x)
-        x = self.conv4_x2(x)
-        x += identity
-        x = self.relu(x)
-
-        identity = self.shortcut4_x3(x)
-        x = self.conv4_x3(x)
-        x += identity
-        x = self.relu(x)
-
-        identity = self.shortcut4_x4(x)
-        x = self.conv4_x4(x)
-        x += identity
-        x = self.relu(x)
-
-        identity = self.shortcut4_x5(x)
-        x = self.conv4_x5(x)
-        x += identity
-        x = self.relu(x)
-
-        identity = self.shortcut4_x6(x)
-        x = self.conv4_x6(x)    #shape_x N = 1024
-        x += identity
-        x = self.relu(x)
-
-        identity = self.shortcut5_x1(x)
-        x = self.conv5_x1(x)
-        x += identity
-        x = self.relu(x)
-
-        identity = self.shortcut5_x2(x)
-        x = self.conv5_x2(x)
-        x += identity
-        x = self.relu(x)
-
-        identity = self.shortcut5_x3(x)
-        x = self.conv5_x3(x)    #shape_x N= 2048
-        x += identity
-        x= self.fc(x)
+        x = self.fc(x)
         return x
+
 def main():
     pass
 if __name__ == '__main__':
