@@ -58,9 +58,6 @@ def main():
     if not folder_path.is_dir():
         folder_path.mkdir(parents=True, exist_ok=True)
 
-    # Create the folder if it doesn't exist
-    folder_path.mkdir(parents=True, exist_ok=True)
-
     normalize = Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     train_transform = Compose([
         RandomResizedCrop(224, scale=(0.6, 1.0)),
@@ -100,7 +97,7 @@ def main():
     # desc_text = "\033[1;36m[Epoch 1/10] Training Model...\033[0m"
 
     if args.checkpoint:
-        checkpoint = torch.load(args.checkpoint)
+        checkpoint = torch.load(args.checkpoint,map_location=device)
         model.load_state_dict(checkpoint["model"])
         start_epoch = checkpoint["epoch"]
         optimizer.load_state_dict(checkpoint["optimizer"])
@@ -167,6 +164,9 @@ def main():
         all_labels = torch.cat(all_labels)
 
         val_accuracy = (all_predictions == all_labels).float().mean().item()
+        is_best = val_accuracy > best_val_accuracy
+        if is_best:
+            best_val_accuracy = val_accuracy
         checkpoint = {
             "epoch": epoch+1,
             "model": model.state_dict(),
@@ -175,8 +175,7 @@ def main():
             "best_acc": best_val_accuracy
         }
         torch.save(checkpoint, "{}/last_model.pth".format(args.trained_model))
-        if val_accuracy > best_val_accuracy:
-            best_val_accuracy = val_accuracy
+        if is_best:
             torch.save(checkpoint, "{}/best_model.pth".format(args.trained_model))
             print(f"Saved best model! Val Accuracy: {best_val_accuracy:.4f}")
 
@@ -185,6 +184,7 @@ def main():
         print(
             f"Epoch {epoch + 1}/{num_epochs} | "
             f"Val Accuracy: {val_accuracy:.4f}"
+            f"Val Loss: {val_loss}"
         )
     writer.close()
 
