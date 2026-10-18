@@ -22,6 +22,7 @@
 - [Getting Started](#getting-started)
 - [Usage](#usage)
 - [Training Configuration](#training-configuration)
+- [Results](#results)
 - [Roadmap](#roadmap)
 - [License](#license)
 - [References](#references)
@@ -239,19 +240,34 @@ print(f"Best accuracy {checkpoint['best_val_accuracy']:.4f} at epoch {checkpoint
 | Evaluation | Test split, once per epoch |
 | Output classes | 37 |
 
+## Results
+
+ResNet-50 trained from scratch (no pretrained weights) for 50 epochs with batch size 32, using the configuration above. Evaluation is on the official `test.txt` split.
+
+| Metric | Value |
+|--------|-------|
+| Best test accuracy | **38.95%** (epoch 49) |
+| Final test accuracy (epoch 50) | 38.76% |
+| Lowest test loss | 2.481 (epoch 28) |
+| Final test loss | 2.670 |
+| Random-guess reference | 2.7% accuracy, loss ≈ 3.61 |
+
+Effect of the training setup, measured at epoch 10:
+
+| Setup | Test loss | Test accuracy |
+|-------|:---------:|:-------------:|
+| Baseline: no normalization or augmentation, constant learning rate `1e-3` | 3.639 | 6.65% |
+| Current: normalization, augmentation, learning rate `1e-2` with cosine decay, weight decay `1e-4` | 3.663 | 11.97% |
+
+**Notes**
+
+- The model overfits: the logged training loss (last batch of each epoch) drops to about 0.3–0.6, while the test loss stops improving after roughly epoch 28 and stays around 2.6–2.7.
+- The test split is used both to pick the best checkpoint and to report accuracy, so the numbers are slightly optimistic. A dedicated validation split is on the roadmap.
+- Training a 25M-parameter network from scratch on about 3.7k images is data-limited; transfer learning from pretrained weights is expected to score far higher.
+
 ## Roadmap
 
-**Current status:** the full pipeline (data → model → training → logging → checkpointing) works end to end for 37-class breed classification. A first baseline run without input normalization or augmentation was recorded; the training script now includes both, plus a higher initial learning rate with cosine decay and weight decay. The next step is to re-train and compare against that baseline.
-
-Baseline run without normalization or augmentation (batch size 32, learning rate `1e-3`, first 10 epochs of a partial run):
-
-| Epoch | Val loss | Val accuracy |
-|:-----:|:--------:|:------------:|
-| 1 | 3.955 | 3.1% |
-| 5 | 3.738 | 3.5% |
-| 10 | 3.639 | 6.7% |
-
-Random guessing over 37 classes gives about 2.7% accuracy and a loss of about 3.61.
+**Current status:** the full pipeline (data → model → training → logging → checkpointing) works end to end for 37-class breed classification, and a full 50-epoch run reaches about 39% test accuracy. The main open problem is overfitting.
 
 **Done**
 
@@ -261,13 +277,11 @@ Random guessing over 37 classes gives about 2.7% accuracy and a loss of about 3.
 - [x] Installable package (`pip install -e .`) and minimal `requirements.txt`
 - [x] Input normalization and data augmentation (ImageNet mean/std, random resized crop, horizontal flip)
 - [x] Cosine learning-rate schedule and weight decay
-
-**In progress**
-
-- [ ] Re-train with normalization and augmentation and compare against the baseline
+- [x] Full 50-epoch training run with normalization and augmentation (about 39% test accuracy)
 
 **Next**
 
+- [ ] Reduce overfitting (stronger augmentation, label smoothing, Mixup/CutMix)
 - [ ] Device-agnostic training and evaluation (CPU fallback)
 - [ ] Dedicated validation split
 - [ ] Inference script for single images
