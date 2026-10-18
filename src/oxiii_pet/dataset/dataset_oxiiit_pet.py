@@ -19,7 +19,7 @@ class OxfordData(Dataset):
             df = df.drop(df.columns[[2, 3]], axis=1)
             self.labels = (df[1] - 1).tolist()
         else:
-            raise "Enter 2 or 37 class number"
+            raise ValueError("num_class must be 2 or 37")
 
 
     def __len__(self):

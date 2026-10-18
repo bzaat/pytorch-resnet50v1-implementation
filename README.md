@@ -36,9 +36,11 @@ This project implements the ResNet-50 architecture from scratch in PyTorch and t
 - **ResNet-50 from scratch:** bottleneck residual blocks, projection shortcuts, and a configurable classification head, with no dependency on `torchvision.models`.
 - **Custom `Dataset`:** reads the official annotation files, builds image paths, converts labels to zero-based indices, and loads images as RGB with Pillow.
 - **Train / evaluation splits:** `trainval.txt` for training and `test.txt` for evaluation.
+- **Two task modes:** 37-breed classification (default) or binary cat-vs-dog classification, selected with `--numclass`.
 - **Training script with CLI:** configurable epochs, batch size, data directory and log directory.
-- **Experiment tracking:** loss and accuracy curves logged to TensorBoard.
-- **Best-model checkpointing:** the checkpoint with the highest evaluation accuracy is saved automatically.
+- **Experiment tracking:** loss and accuracy curves, plus a per-epoch confusion matrix, logged to TensorBoard.
+- **Checkpointing and resume:** the latest and the best checkpoints (model, optimizer and scheduler state) are saved automatically, and training can be resumed from either.
+- **CPU and GPU support:** training and evaluation run on CUDA when available and fall back to the CPU otherwise.
 - **Installable package:** `pip install -e .` makes `oxiii_pet` importable from anywhere.
 
 ## Project Structure
@@ -101,7 +103,7 @@ data/
 The `OxfordData` class (`src/oxiii_pet/dataset/dataset_oxiiit_pet.py`) inherits from `torch.utils.data.Dataset`:
 
 1. **Load annotations:** reads `trainval.txt` when `train=True`, or `test.txt` when `train=False`.
-2. **Select columns:** keeps the image name and the breed class ID, and drops the remaining columns.
+2. **Select the label column:** keeps the image name plus one label column, chosen by `num_class`: the breed class ID for 37 classes, or the species (cat/dog) for 2 classes. Any other value is rejected.
 3. **Build paths:** joins `root/images/<image_name>.jpg`.
 4. **Map labels:** converts 1-based class IDs to 0-based indices (`label - 1`).
 5. **Load images:** opens each image with Pillow and converts it to RGB.
@@ -170,7 +172,7 @@ Run the DataLoader smoke test to confirm the dataset is found and batches have t
 python src/oxiii_pet/dataset/dataloader_oxiii_pet.py
 ```
 
-Or use the dataset directly in Python:
+Or use the dataset directly in Python. The first argument of `OxfordData` is the number of classes: `37` for breeds or `2` for cat vs dog:
 
 ```python
 import torch
@@ -181,7 +183,7 @@ from oxiii_pet.dataset.dataset_oxiiit_pet import OxfordData
 
 transform = Compose([Resize((224, 224)), ToImage(), ToDtype(torch.float32, scale=True)])
 
-train_set = OxfordData("data", train=True, transform=transform)
+train_set = OxfordData(37, "data", train=True, transform=transform)
 loader = DataLoader(train_set, batch_size=16, shuffle=True, num_workers=4, drop_last=True)
 
 images, labels = next(iter(loader))
@@ -201,8 +203,23 @@ python -m oxiii_pet.model.train --epochs 50 --batch_size 32 --dir data
 | `--batch_size` | `-b` | `8` | Batch size for both splits |
 | `--dir` | `-d` | `$DATA_DIR` or `data` | Dataset root directory |
 | `--logging` | `-l` | `tensorboard` | Directory for TensorBoard logs |
+| `--trained_model` | `-t` | `trained_model` | Directory where checkpoints are saved |
+| `--checkpoint` | `-c` | none | Checkpoint to resume training from |
+| `--numclass` | `-n` | `37` | Number of classes: `37` for breeds, `2` for cat vs dog |
 
-After every epoch the model is evaluated on the test split. Whenever accuracy improves, a checkpoint is written to `best_model.pth`.
+After every epoch the model is evaluated on the test split. Two checkpoints are written to the `--trained_model` directory: `last_model.pth` after every epoch, and `best_model.pth` whenever test accuracy improves. Each checkpoint stores the epoch, model, optimizer and scheduler state, and the best accuracy.
+
+To resume an interrupted run, pass the checkpoint and keep the same `--epochs` value so the learning-rate schedule stays consistent:
+
+```bash
+python -m oxiii_pet.model.train --epochs 50 --batch_size 32 --checkpoint trained_model/last_model.pth
+```
+
+To train the binary cat-vs-dog task instead of the 37 breeds, pass `--numclass 2`:
+
+```bash
+python -m oxiii_pet.model.train --epochs 50 --batch_size 32 --numclass 2
+```
 
 ### 3. Monitor training
 
@@ -210,7 +227,9 @@ After every epoch the model is evaluated on the test split. Whenever accuracy im
 tensorboard --logdir tensorboard
 ```
 
-Logged scalars: `Train/Loss`, `Validation/Loss`, `Validation/Accuracy`.
+Logged scalars: `Train/Loss`, `Validation/Accuracy`.
+
+Logged images: `confusion_matrix`, the confusion matrix of the test split, written once per epoch by `plot_confusion_matrix` in `train.py` (scikit-learn computes the matrix and matplotlib draws it). Open the **Images** tab and drag the slider to see how the errors change during training. Rows are the true classes and columns are the predicted classes; each cell shows the fraction of that true class predicted as the column class, so the diagonal is the per-class recall.
 
 ### 4. Load a trained checkpoint
 
@@ -218,12 +237,12 @@ Logged scalars: `Train/Loss`, `Validation/Loss`, `Validation/Accuracy`.
 import torch
 from oxiii_pet.model.models import Resnet50
 
-model = Resnet50(num_classes=37)
-checkpoint = torch.load("best_model.pth", map_location="cpu")
-model.load_state_dict(checkpoint["model_state_dict"])
+model = Resnet50(num_classes=37)  # use 2 if you trained with --numclass 2
+checkpoint = torch.load("trained_model/best_model.pth", map_location="cpu")
+model.load_state_dict(checkpoint["model"])
 model.eval()
 
-print(f"Best accuracy {checkpoint['best_val_accuracy']:.4f} at epoch {checkpoint['epoch']}")
+print(f"Loaded checkpoint from epoch {checkpoint['epoch']}")
 ```
 
 ## Training Configuration
@@ -238,7 +257,7 @@ print(f"Best accuracy {checkpoint['best_val_accuracy']:.4f} at epoch {checkpoint
 | Test transforms | `Resize((224, 224))`, ImageNet mean/std normalization |
 | DataLoader | 4 workers, `drop_last=True` for training |
 | Evaluation | Test split, once per epoch |
-| Output classes | 37 |
+| Output classes | 37 breeds by default, or 2 (cat vs dog) with `--numclass 2` |
 
 ## Results
 
@@ -278,12 +297,16 @@ Effect of the training setup, measured at epoch 10:
 - [x] Input normalization and data augmentation (ImageNet mean/std, random resized crop, horizontal flip)
 - [x] Cosine learning-rate schedule and weight decay
 - [x] Full 50-epoch training run with normalization and augmentation (about 39% test accuracy)
+- [x] Device-agnostic training and evaluation (CPU fallback)
+- [x] Resumable training (latest and best checkpoints with optimizer and scheduler state)
+- [x] Per-epoch confusion matrix logged to TensorBoard
+- [x] Binary (cat vs dog) and 37-breed modes selectable with `--numclass`
 
 **Next**
 
 - [ ] Reduce overfitting (stronger augmentation, label smoothing, Mixup/CutMix)
-- [ ] Device-agnostic training and evaluation (CPU fallback)
 - [ ] Dedicated validation split
+- [ ] Show breed names instead of class indices on the confusion matrix axes
 - [ ] Inference script for single images
 - [ ] Benchmark against `torchvision` pretrained ResNet-50
 - [ ] Unit tests

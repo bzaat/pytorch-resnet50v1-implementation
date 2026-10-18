@@ -204,7 +204,8 @@ def main():
         val_loss = total_val_loss / num_samples
         all_predictions = torch.cat(all_predictions)
         all_labels = torch.cat(all_labels)
-        plot_confusion_matrix(writer,confusion_matrix(all_labels.cpu().numpy(), all_predictions.cpu().numpy()),['cat','dog'], epoch)
+        class_names = ['cat', 'dog'] if num_class == 2 else [str(i) for i in range(num_class)]
+        plot_confusion_matrix(writer, confusion_matrix(all_labels.cpu().numpy(), all_predictions.cpu().numpy()), class_names, epoch)
 
         val_accuracy = (all_predictions == all_labels).float().mean().item()
         is_best = val_accuracy > best_val_accuracy
