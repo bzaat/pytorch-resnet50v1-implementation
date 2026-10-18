@@ -1,5 +1,6 @@
 import os
 from argparse import ArgumentParser
+from pathlib import Path
 
 import torch.nn as nn
 import torch.optim
@@ -21,6 +22,8 @@ def get_args():
     parser.add_argument("--batch_size","-b", type=int, default=8, help="batch size")
     parser.add_argument("--dir","-d", type=str, default=os.getenv("DATA_DIR", "data"), help="data path")
     parser.add_argument("--logging","-l", type=str, default="tensorboard")
+    parser.add_argument("--trained_model","-t", type=str, default="trained_model")
+    parser.add_argument("--checkpoint","-c", type=str, default=None)
     args = parser.parse_args()
     return args
 
@@ -43,8 +46,20 @@ def initialize_weights(model):
 
 def main():
     args = get_args()
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+    else:
+        device = torch.device("cpu")
+
     num_epochs = args.epochs
     DATA_DIR = args.dir
+    # Specify your target directory path
+    folder_path = Path(args.trained_model)
+    if not folder_path.is_dir():
+        folder_path.mkdir(parents=True, exist_ok=True)
+
+    # Create the folder if it doesn't exist
+    folder_path.mkdir(parents=True, exist_ok=True)
 
     normalize = Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     train_transform = Compose([
@@ -77,24 +92,31 @@ def main():
         shuffle=False
     )
     writer = SummaryWriter(args.logging)
-    model = Resnet50()
+    model = Resnet50().to(device)
     initialize_weights(model)
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=1e-2, momentum=0.9, weight_decay=1e-4)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs)
     # desc_text = "\033[1;36m[Epoch 1/10] Training Model...\033[0m"
+
+    if args.checkpoint:
+        checkpoint = torch.load(args.checkpoint)
+        model.load_state_dict(checkpoint["model"])
+        start_epoch = checkpoint["epoch"]
+        optimizer.load_state_dict(checkpoint["optimizer"])
+        scheduler.load_state_dict(checkpoint["scheduler"])
+        best_val_accuracy = checkpoint["best_acc"]
+    else:
+        start_epoch = 0
+        best_val_accuracy = 0.0
     num_iters = len(train_dataloader)
-    if torch.cuda.is_available():
-        model.cuda()
-    best_val_accuracy = 0.0
-    for epoch in range(num_epochs):
+    for epoch in range(start_epoch, num_epochs):
         model.train()
         # progress_bar = tqdm(train_dataloader,desc=desc_text,colour="green")
         progress_bar = tqdm(train_dataloader, desc=f"Epoch {epoch + 1}/{num_epochs}", colour="green")
         for i, (images, labels) in enumerate(progress_bar):
-            if torch.cuda.is_available():
-                images = images.cuda()
-                labels = labels.cuda()
+            images = images.to(device)
+            labels = labels.to(device)
             # forward pass
             output = model(images)
             loss_value = criterion(output, labels)
@@ -127,8 +149,8 @@ def main():
 
         with torch.no_grad():
             for images, labels in test_dataloader:
-                images = images.cuda()
-                labels = labels.cuda()
+                images = images.to(device)
+                labels = labels.to(device)
 
                 predictions = model(images)
                 loss_value = criterion(predictions, labels)
@@ -145,21 +167,23 @@ def main():
         all_labels = torch.cat(all_labels)
 
         val_accuracy = (all_predictions == all_labels).float().mean().item()
+        checkpoint = {
+            "epoch": epoch+1,
+            "model": model.state_dict(),
+            "optimizer": optimizer.state_dict(),
+            "scheduler": scheduler.state_dict(),
+            "best_acc": best_val_accuracy
+        }
+        torch.save(checkpoint, "{}/last_model.pth".format(args.trained_model))
         if val_accuracy > best_val_accuracy:
             best_val_accuracy = val_accuracy
-            torch.save({
-                "epoch": epoch + 1,
-                "model_state_dict": model.state_dict(),
-                "best_val_accuracy": best_val_accuracy,
-            }, "best_model.pth")
+            torch.save(checkpoint, "{}/best_model.pth".format(args.trained_model))
             print(f"Saved best model! Val Accuracy: {best_val_accuracy:.4f}")
 
-        writer.add_scalar("Validation/Loss", val_loss, epoch)
         writer.add_scalar("Validation/Accuracy", val_accuracy, epoch)
 
         print(
             f"Epoch {epoch + 1}/{num_epochs} | "
-            f"Val Loss: {val_loss:.4f} | "
             f"Val Accuracy: {val_accuracy:.4f}"
         )
     writer.close()
