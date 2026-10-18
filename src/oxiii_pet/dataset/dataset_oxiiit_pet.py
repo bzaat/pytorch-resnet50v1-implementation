@@ -4,16 +4,22 @@ import os
 import pandas as pd
 
 class OxfordData(Dataset):
-    def __init__(self, root, train= True, transform = None):
+    def __init__(self, num_class, root, train= True, transform = None):
         self.transform = transform
         # print(os.path.join(root,'annotations', 'trainval.txt'))
         if train:
             df = pd.read_csv(os.path.join(root,'annotations', 'trainval.txt'),sep=r'\s+', header= None)
         else:
             df = pd.read_csv(os.path.join(root, 'annotations', 'test.txt'),sep=r'\s+', header= None)
-        df = df.drop(df.columns[[2, 3]], axis=1)
         self.image_path = [os.path.join(root, "images", str(name) + ".jpg") for name in df[0].tolist()]
-        self.labels = (df[1] - 1).tolist()
+        if num_class ==2:
+            df = df.drop(df.columns[[1, 3]], axis=1)
+            self.labels = (df[2] - 1).tolist()
+        elif num_class ==37:
+            df = df.drop(df.columns[[2, 3]], axis=1)
+            self.labels = (df[1] - 1).tolist()
+        else:
+            raise "Enter 2 or 37 class number"
 
 
     def __len__(self):

@@ -11,6 +11,9 @@ from torchvision.transforms.v2 import (
 )
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
+from sklearn.metrics import confusion_matrix
+import matplotlib.pyplot as plt
+import numpy as np
 
 from oxiii_pet.model.models import Resnet50
 from oxiii_pet.dataset.dataset_oxiiit_pet import OxfordData
@@ -24,8 +27,46 @@ def get_args():
     parser.add_argument("--logging","-l", type=str, default="tensorboard")
     parser.add_argument("--trained_model","-t", type=str, default="trained_model")
     parser.add_argument("--checkpoint","-c", type=str, default=None)
+    parser.add_argument("--numclass","-n", type=int, default=37)
     args = parser.parse_args()
     return args
+
+
+def plot_confusion_matrix(writer, cm, class_names, epoch):
+    """
+    Returns a matplotlib figure containing the plotted confusion matrix.
+
+    Args:
+        cm (array, shape = [n, n]): a confusion matrix of integer classes
+        class_names (array, shape = [n]): String names of the integer classes
+    """
+
+    figure = plt.figure(figsize=(20, 20))
+    # color map: https://matplotlib.org/stable/gallery/color/colormap_reference.html
+    plt.imshow(cm, interpolation='nearest', cmap="ocean")
+    plt.title("Confusion matrix")
+    plt.colorbar()
+
+    tick_marks = np.arange(len(class_names))
+    plt.xticks(tick_marks, class_names, rotation=45)
+    plt.yticks(tick_marks, class_names)
+
+    # Normalize the confusion matrix.
+    cm = np.around(cm.astype('float') / cm.sum(axis=1)[:, np.newaxis], decimals=2)
+
+    # Use white text if squares are dark; otherwise black.
+    threshold = cm.max() / 2.
+
+    for i in range(cm.shape[0]):
+        for j in range(cm.shape[1]):
+            color = "white" if cm[i, j] > threshold else "black"
+            plt.text(j, i, cm[i, j], horizontalalignment="center", color=color)
+
+    plt.tight_layout()
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+
+    writer.add_figure('confusion_matrix', figure, epoch)
 
 def initialize_weights(model):
     for module in model.modules():
@@ -52,6 +93,7 @@ def main():
         device = torch.device("cpu")
 
     num_epochs = args.epochs
+    num_class = args.numclass
     DATA_DIR = args.dir
     # Specify your target directory path
     folder_path = Path(args.trained_model)
@@ -72,7 +114,7 @@ def main():
         ToDtype(torch.float32, scale=True),
         normalize,
     ])
-    train_data = OxfordData(DATA_DIR, train=True, transform=train_transform)
+    train_data = OxfordData(num_class,DATA_DIR, train=True, transform=train_transform)
     train_dataloader = DataLoader(
         dataset=train_data,
         batch_size=args.batch_size,
@@ -80,7 +122,7 @@ def main():
         drop_last=True,
         shuffle=True
     )
-    test_data = OxfordData(DATA_DIR, train=False, transform=test_transform)
+    test_data = OxfordData(num_class,DATA_DIR, train=False, transform=test_transform)
     test_dataloader = DataLoader(
         dataset=test_data,
         batch_size=args.batch_size,
@@ -89,7 +131,7 @@ def main():
         shuffle=False
     )
     writer = SummaryWriter(args.logging)
-    model = Resnet50().to(device)
+    model = Resnet50(num_class).to(device)
     initialize_weights(model)
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=1e-2, momentum=0.9, weight_decay=1e-4)
@@ -162,6 +204,7 @@ def main():
         val_loss = total_val_loss / num_samples
         all_predictions = torch.cat(all_predictions)
         all_labels = torch.cat(all_labels)
+        plot_confusion_matrix(writer,confusion_matrix(all_labels.cpu().numpy(), all_predictions.cpu().numpy()),['cat','dog'], epoch)
 
         val_accuracy = (all_predictions == all_labels).float().mean().item()
         is_best = val_accuracy > best_val_accuracy
