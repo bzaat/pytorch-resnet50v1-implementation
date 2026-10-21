@@ -49,8 +49,10 @@ def main():
     max_ind = torch.argmax(probs)
     predicted_class = classes[max_ind]
     print("result: {} with confident score: {}".format(predicted_class,probs[0,max_ind]))
-    cv2.imshow('class:{} {}'.format(predicted_class,probs[0,max_ind]),original_image)
-    cv2.waitKey(0)
+    # filename = f"result_{predicted_class}_{probs[0,max_ind]*100:.0f}.png"
+    # cv2.imwrite(filename, original_image)
+    # cv2.imshow(filename,original_image)
+    # cv2.waitKey(0)
 
 if __name__ == '__main__':
     main()

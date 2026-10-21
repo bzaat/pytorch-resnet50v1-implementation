@@ -22,12 +22,14 @@ from oxiii_pet.dataset.dataset_oxiiit_pet import OxfordData
 def get_args():
     parser = ArgumentParser(description="CNN IN Oxiii Pet")
     parser.add_argument("--epochs","-e", type=int, default=10, help="number of epochs")
+    parser.add_argument("--images_size","-i", type=int, default=224, help="size of images")
     parser.add_argument("--batch_size","-b", type=int, default=8, help="batch size")
     parser.add_argument("--dir","-d", type=str, default=os.getenv("DATA_DIR", "data"), help="data path")
     parser.add_argument("--logging","-l", type=str, default="tensorboard")
     parser.add_argument("--trained_model","-t", type=str, default="trained_model")
     parser.add_argument("--checkpoint","-c", type=str, default=None)
-    parser.add_argument("--numclass","-n", type=int, default=37)
+    parser.add_argument("--num_class","-n", type=int, default=37)
+    parser.add_argument("--clip","-cl", type=float, default=0.1)
     args = parser.parse_args()
     return args
 
@@ -91,10 +93,11 @@ def main():
         device = torch.device("cuda")
     else:
         device = torch.device("cpu")
-
+    # torch.autograd.set_detect_anomaly(True)
     num_epochs = args.epochs
-    num_class = args.numclass
+    num_class = args.num_class
     DATA_DIR = args.dir
+    image_size = args.images_size
     # Specify your target directory path
     folder_path = Path(args.trained_model)
     if not folder_path.is_dir():
@@ -102,14 +105,14 @@ def main():
 
     normalize = Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     train_transform = Compose([
-        RandomResizedCrop(224, scale=(0.6, 1.0)),
+        RandomResizedCrop(image_size, scale=(0.6, 1.0)),
         RandomHorizontalFlip(),
         ToImage(),
         ToDtype(torch.float32, scale=True),
         normalize,
     ])
     test_transform = Compose([
-        Resize((224, 224)),
+        Resize((image_size, image_size)),
         ToImage(),
         ToDtype(torch.float32, scale=True),
         normalize,
