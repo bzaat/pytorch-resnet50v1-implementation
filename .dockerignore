@@ -1,0 +1,33 @@
+# .dockerignore patterns are matched from the build-context root, not
+# gitignore-style, so nested matches need the **/ prefix.
+
+# Version control and editors
+.git
+.gitignore
+.idea
+.vscode
+
+# Python caches, build output and virtual environments
+**/__pycache__
+**/*.py[cod]
+**/*.egg-info
+build
+dist
+.venv
+venv
+.pytest_cache
+
+# Dataset, checkpoints and logs: mount these at run time instead of baking
+# them into the image (they are large and change on every run)
+data
+trained_model
+tensorboard
+runs
+**/*.pth
+**/*.pt
+**/*.ckpt
+
+# Docker files are not needed inside the image
+Dockerfile
+.dockerignore
+docker-compose*.yml
