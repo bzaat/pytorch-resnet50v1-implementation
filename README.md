@@ -50,7 +50,7 @@ Two models are included so they can be compared on the same data: a ResNet-50 tr
 - **Experiment tracking:** loss and accuracy curves, plus a per-epoch confusion matrix, logged to TensorBoard.
 - **Checkpointing and resume:** the latest and the best checkpoints (model, optimizer and scheduler state) are saved automatically, and training can be resumed from either.
 - **CPU and GPU support:** training and evaluation run on CUDA when available and fall back to the CPU otherwise.
-- **Installable package:** `pip install -e .` makes `oxiii_pet` importable from anywhere.
+- **Installable package managed with [uv](https://docs.astral.sh/uv/):** `uv sync` installs the locked dependencies and the project in editable mode, so `oxiii_pet` is importable from anywhere.
 
 ## Project Structure
 
@@ -58,7 +58,7 @@ Two models are included so they can be compared on the same data: a ResNet-50 tr
 .
 ├── LICENSE
 ├── pyproject.toml
-├── requirements.txt
+├── uv.lock
 └── src/
     └── oxiii_pet/
         ├── dataset/
@@ -128,33 +128,32 @@ The `OxfordData` class (`src/oxiii_pet/dataset/dataset_oxiiit_pet.py`) inherits 
 
 ### Prerequisites
 
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) (it can also download a suitable Python for you)
 - Python 3.10 or newer
 - (Optional) An NVIDIA GPU with CUDA for faster training
 
 ### Installation
 
 ```bash
-# 1. Clone the repository
+# 1. Install uv (once)
+curl -LsSf https://astral.sh/uv/install.sh | sh     # Windows (PowerShell): powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+# 2. Clone the repository
 git clone https://github.com/bzaat/pytorch-resnet50v1-implementation.git
 cd pytorch-resnet50v1-implementation
 
-# 2. Create and activate a virtual environment
-python -m venv .venv
-source .venv/bin/activate          # Windows (PowerShell): .venv\Scripts\Activate.ps1
-
-# 3. Install dependencies
-pip install -r requirements.txt
-
-# 4. Install the project in editable mode
-pip install -e .
+# 3. Create .venv and install the locked dependencies and the project (editable)
+uv sync
 ```
 
-> **GPU users:** if you want a specific CUDA build of PyTorch, install `torch` and `torchvision` first using the command from the [official selector](https://pytorch.org/get-started/locally/), then run the steps above.
+`uv sync` reads `pyproject.toml` and `uv.lock`, creates a `.venv` in the project folder and installs everything into it. There is no need to activate the environment: prefix commands with `uv run` (as in the examples below), or activate `.venv` yourself if you prefer.
+
+> **GPU users:** the default PyPI build of PyTorch on Linux includes CUDA support. For a CPU-only build or a specific CUDA version, follow uv's [PyTorch guide](https://docs.astral.sh/uv/guides/integration/pytorch/).
 
 Verify the installation:
 
 ```bash
-python -c "import torch; print(torch.__version__, torch.cuda.is_available())"
+uv run python -c "import torch; print(torch.__version__, torch.cuda.is_available())"
 ```
 
 ### Download the dataset
@@ -183,7 +182,7 @@ export DATA_DIR=/path/to/oxford-iiit-pet     # Windows (PowerShell): $env:DATA_D
 Run the DataLoader smoke test to confirm the dataset is found and batches have the expected shape:
 
 ```bash
-python src/oxiii_pet/dataset/dataloader_oxiii_pet.py
+uv run python src/oxiii_pet/dataset/dataloader_oxiii_pet.py
 ```
 
 Or use the dataset directly in Python. The first argument of `OxfordData` is the number of classes: `37` for breeds or `2` for cat vs dog:
@@ -208,7 +207,7 @@ print(labels.shape)   # torch.Size([16])
 ### 2. Train the model
 
 ```bash
-python -m oxiii_pet.model.train --epochs 50 --batch_size 32 --dir data
+uv run python -m oxiii_pet.model.train --epochs 50 --batch_size 32 --dir data
 ```
 
 | Argument | Short | Default | Description |
@@ -227,19 +226,19 @@ After every epoch the model is evaluated on the test split. Two checkpoints are 
 To resume an interrupted run, pass the checkpoint and keep the same `--epochs` value so the learning-rate schedule stays consistent:
 
 ```bash
-python -m oxiii_pet.model.train --epochs 50 --batch_size 32 --checkpoint trained_model/last_model.pth
+uv run python -m oxiii_pet.model.train --epochs 50 --batch_size 32 --checkpoint trained_model/last_model.pth
 ```
 
 To train the binary cat-vs-dog task instead of the 37 breeds, pass `--num_class 2`:
 
 ```bash
-python -m oxiii_pet.model.train --epochs 50 --batch_size 32 --num_class 2
+uv run python -m oxiii_pet.model.train --epochs 50 --batch_size 32 --num_class 2
 ```
 
 ### 3. Monitor training
 
 ```bash
-tensorboard --logdir tensorboard
+uv run tensorboard --logdir tensorboard
 ```
 
 Logged scalars: `Train/Loss`, `Validation/Accuracy`.
@@ -281,7 +280,7 @@ The script saves to `--trained_model` but does not create the folder, so create 
 
 ```bash
 mkdir -p trained_model
-python src/oxiii_pet/transfer_learning/train.py -n 37 --epoch 10 --batch_size 32
+uv run python src/oxiii_pet/transfer_learning/train.py -n 37 --epoch 10 --batch_size 32
 ```
 
 | Argument | Short | Default | Description |
@@ -374,7 +373,7 @@ The project is complete: data pipeline, ResNet-50 from scratch, training with Te
 - [x] Custom `Dataset` and `DataLoader` for Oxford-IIIT Pet (37 classes)
 - [x] ResNet-50 implemented from scratch
 - [x] Training loop with TensorBoard logging and best-model checkpointing
-- [x] Installable package (`pip install -e .`) and minimal `requirements.txt`
+- [x] Installable package with dependencies declared in `pyproject.toml` and locked with uv (`uv.lock`)
 - [x] Input normalization and data augmentation (ImageNet mean/std, random resized crop, horizontal flip)
 - [x] Cosine learning-rate schedule and weight decay
 - [x] Full 50-epoch training run with normalization and augmentation (about 39% test accuracy)
