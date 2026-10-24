@@ -163,7 +163,7 @@ def main():
             output = model(images)
             loss_value = criterion(output, labels)
             progress_bar.set_description("Epoch {}/{}. Iteration {}/{}. Loss {}".format(epoch + 1, num_epochs, i, num_iters, loss_value))
-            writer.add_scalar("Train/Loss", loss_value, i + (epoch * num_iters))
+            writer.add_scalar("Train/Loss", loss_value.item(), i + (epoch * num_iters))
             # backward & optimize
             optimizer.zero_grad()
             loss_value.backward()
