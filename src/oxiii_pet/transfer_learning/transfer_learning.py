@@ -1,6 +1,6 @@
 from argparse import ArgumentParser
 
-from torch.utils.data import DataLoaderc
+from torch.utils.data import DataLoader
 import torch
 from torchvision.models import resnet50, ResNet50_Weights
 import torch.nn as nn

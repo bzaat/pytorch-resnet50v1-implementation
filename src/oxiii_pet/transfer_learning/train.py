@@ -45,7 +45,7 @@ def main():
     for name, param in model.named_parameters():
         if not "fc1." in name and not "fc2." in name and not "layer4."  in name:
             param.requires_grad = False
-        print(name, param.requires_grad)
+        # print(name, param.requires_grad)
     normalize = Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     train_transform = Compose([
         RandomResizedCrop(image_size, scale=(0.6, 1.0)),
