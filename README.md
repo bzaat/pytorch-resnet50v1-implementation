@@ -29,6 +29,7 @@
 - [References](#references)
 
 ## Overview
+[![Architecture diagram of bzaat/pytorch-resnet50v1-implementation](https://gitdiagram.com/bzaat/pytorch-resnet50v1-implementation/diagram.png)](https://gitdiagram.com/bzaat/pytorch-resnet50v1-implementation?utm_source=readme&utm_medium=picture)
 
 This project implements the ResNet-50 architecture from scratch in PyTorch and trains it on the [Oxford-IIIT Pet Dataset](https://www.robots.ox.ac.uk/~vgg/data/pets/) (37 cat and dog breeds). It is a learning-oriented codebase focused on three things: understanding CNN architectures, building a clean data pipeline, and setting up a reproducible training workflow.
 

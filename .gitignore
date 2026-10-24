@@ -17,6 +17,7 @@ data/
 *.pth
 *.pt
 *.ckpt
+oxiii_pet.egg-info
 
 # Training logs
 runs/
