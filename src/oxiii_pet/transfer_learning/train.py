@@ -1,5 +1,4 @@
 from argparse import ArgumentParser
-import json
 import os
 import time
 from pathlib import Path
@@ -9,7 +8,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from sklearn.metrics import confusion_matrix
-from oxiii_pet.dataset.dataset_oxiiit_pet import OxfordData
+from oxiii_pet.dataset.dataset_oxiiit_pet import DEFAULT_SPLIT_FILE, OxfordData
 from torchvision.transforms.v2 import (
     Compose, Resize, RandomResizedCrop, RandomHorizontalFlip,
     ToImage, ToDtype, Normalize,
@@ -17,7 +16,7 @@ from torchvision.transforms.v2 import (
 
 from oxiii_pet.transfer_learning.transfer_learning import MyModel
 from oxiii_pet.utils.run_utils import (
-    MetricsCSV, default_run_dir, get_class_names, plot_confusion_matrix,
+    MetricsCSV, default_run_dir, final_test_evaluation, get_class_names, plot_confusion_matrix,
     run_epoch, set_seed, setup_run,
 )
 
@@ -34,6 +33,8 @@ def get_args():
     parser.add_argument("--trained_model","-t", type=str, default=None, help="checkpoint dir (default <run_dir>/checkpoints)")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--num_workers", "-w", type=int, default=4)
+    parser.add_argument("--split_file", type=str, default=DEFAULT_SPLIT_FILE,
+                        help="JSON with the train/val image names of trainval.txt")
 
     args = parser.parse_args()
     return args
@@ -75,8 +76,14 @@ def main():
         ToDtype(torch.float32, scale=True),
         normalize
     ])
-    train_dataset = OxfordData(num_classes,DATA_DIR, train=True, transform=train_transform)
-    test_dataset = OxfordData(num_classes,DATA_DIR, train=False, transform=test_transform)
+    train_dataset = OxfordData(num_classes, DATA_DIR, split="train", transform=train_transform,
+                               split_file=args.split_file)
+    val_dataset = OxfordData(num_classes, DATA_DIR, split="val", transform=test_transform,
+                             split_file=args.split_file)
+    # The test split is only used once, after the last epoch (final_test_evaluation).
+    test_dataset = OxfordData(num_classes, DATA_DIR, split="test", transform=test_transform)
+    val_dataloader = DataLoader(dataset=val_dataset, batch_size=args.batch_size,
+                                num_workers=args.num_workers, drop_last=False, shuffle=False)
     train_dataloader = DataLoader(
         dataset=train_dataset,
         batch_size=args.batch_size,
@@ -94,15 +101,15 @@ def main():
         shuffle=False
     )
     class_names = get_class_names(num_classes, DATA_DIR)
-    logger.info("Train samples: %d | Test samples: %d", len(train_dataset), len(test_dataset))
+    logger.info("Train samples: %d | Val samples: %d | Test samples: %d (test used once, after training)",
+                len(train_dataset), len(val_dataset), len(test_dataset))
     writer = SummaryWriter(os.path.join(args.run_dir, "tensorboard"))
     metrics = MetricsCSV(os.path.join(args.run_dir, "metrics.csv"))
     num_iters = len(train_dataloader)
     optimizer = torch.optim.SGD(model.parameters(), lr=1e-2, momentum=0.9, weight_decay=1e-4)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs)
     criterion = nn.CrossEntropyLoss()
-    best_val_accuracy, best_epoch = 0.0, None
-    run_start = time.time()
+    best_val_accuracy, best_epoch = -1.0, None  # so epoch 1 is always saved as best
     for epoch in range(num_epochs):
         epoch_start = time.time()
         lr = optimizer.param_groups[0]["lr"]
@@ -111,11 +118,11 @@ def main():
             desc=f"Train {epoch + 1}/{num_epochs}", writer=writer, global_step=epoch * num_iters)
         scheduler.step()
         val_loss, val_accuracy, all_predictions, all_labels = run_epoch(
-            model, test_dataloader, criterion, device, desc=f"Val   {epoch + 1}/{num_epochs}")
+            model, val_dataloader, criterion, device, desc=f"Val   {epoch + 1}/{num_epochs}")
         plot_confusion_matrix(writer, confusion_matrix(all_labels.numpy(), all_predictions.numpy(),
                                                        labels=list(range(num_classes))), class_names, epoch)
 
-        is_best = val_accuracy > best_val_accuracy
+        is_best = val_accuracy > best_val_accuracy  # strict: ties keep the earlier epoch
         if is_best:
             best_val_accuracy, best_epoch = val_accuracy, epoch + 1
         checkpoint = {
@@ -139,18 +146,14 @@ def main():
         logger.info(
             "Epoch %d/%d | lr %.3e | train loss %.4f acc %.4f | val loss %.4f acc %.4f | %.1fs%s",
             epoch + 1, num_epochs, lr, train_loss, train_acc, val_loss, val_accuracy, epoch_time,
-            " | new best, saved best_model.pth" if is_best else "")
+            " | new best val acc, saved best_model.pth" if is_best else "")
     writer.close()
 
-    summary = {
-        "best_val_acc": best_val_accuracy, "best_epoch": best_epoch,
-        "final_val_acc": val_accuracy, "final_val_loss": val_loss, "final_epoch": num_epochs,
-        "train_time_s_this_session": round(time.time() - run_start, 1),
-        "note": "val = official test.txt split (also used to select best_model.pth)",
-    }
-    with open(os.path.join(args.run_dir, "summary.json"), "w") as f:
-        json.dump(summary, f, indent=2)
-    logger.info("Summary: %s", json.dumps(summary))
+    final_test_evaluation(
+        model, test_dataloader, criterion, device, args.trained_model, args.run_dir, num_classes,
+        class_names, logger, extra={"n_train": len(train_dataset), "n_val": len(val_dataset),
+                                    "split_file": args.split_file, "seed": args.seed,
+                                    "trainable_params": n_trainable, "total_params": n_total})
 
 if __name__ == '__main__':
     main()

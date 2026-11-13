@@ -1,0 +1,29 @@
+{
+  "experiment": "transfer",
+  "args": {
+    "data_path": "data",
+    "epoch": 10,
+    "image_size": 224,
+    "num_classes": 2,
+    "batch_size": 32,
+    "version": 2,
+    "run_dir": "runs/2026-11-13_C_transfer_2cls_seed43",
+    "trained_model": "runs/2026-11-13_C_transfer_2cls_seed43/checkpoints",
+    "seed": 43,
+    "num_workers": 4,
+    "split_file": "splits/trainval_80_20_seed0.json"
+  },
+  "seed": 43,
+  "start_time": "2026-11-13T20:57:19",
+  "git_commit": "8ba4cee2f01c2aa5e35503586aa4e01141103e5b",
+  "git_dirty": false,
+  "python": "3.10.12",
+  "torch": "2.14.1+cu130",
+  "torchvision": "0.29.1+cu130",
+  "cuda": "13.0",
+  "cudnn": 92400,
+  "cuda_available": true,
+  "gpu": "NVIDIA GeForce RTX 3050 6GB Laptop GPU",
+  "cpu_count": 4,
+  "deterministic_note": "Seeded, but cuDNN kernels are not forced deterministic; GPU runs are not bit-exact."
+}

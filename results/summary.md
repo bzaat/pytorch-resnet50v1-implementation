@@ -1,39 +1,83 @@
-# Results summary (re-run 2026-11-13)
+# Results summary (3 seeds, checkpoint selected on validation)
 
-All numbers below come from the runs listed here; each run folder in `results/` holds its `config.json`, `metrics.csv` (one row per epoch), `summary.json` and `train.log`. Raw checkpoints and TensorBoard event files stay local under `runs/` (gitignored).
+Runs of 2026-11-13, training seeds 42, 43 and 44, one NVIDIA RTX 3050 6GB Laptop GPU, PyTorch 2.14.1+cu130. All runs start from a clean working tree: commit `8ba4cee` for everything except A seed 43, which was re-run from scratch at commit `bca1602` (see [below](#a-seed-43-re-run)). The training code path is the same in both commits; `bca1602` only adds RNG state to checkpoints and fixes resume. The hyperparameters are the ones the repo used before this change (no tuning).
 
-"Test" is the official `test.txt` split (3669 images). The repo has no separate validation split, so the **best** epoch is selected on the test split and is slightly optimistic; the **final** epoch is the unbiased number.
+**Protocol in short.** Train on 80% of `trainval.txt` (2944 images). Validate every epoch on the other 20% (736 images; stratified by breed, split seed 0, [`../splits/trainval_80_20_seed0.json`](../splits/trainval_80_20_seed0.json)). `best_model.pth` = highest validation accuracy (ties: earlier epoch); `last_model.pth` = final epoch. After training, each of the two checkpoints is evaluated **once** on the official `test.txt` split (3669 images). The test split plays no part in any choice. Full protocol: [README, Experimental Protocol](../README.md#experimental-protocol).
 
-| Experiment | Epochs | Best test acc (epoch) | Final test acc (epoch) | Final test loss | Train time | Hardware | Seed | Commit | Run |
-|---|:-:|:-:|:-:|:-:|:-:|---|:-:|:-:|---|
-| A. ResNet-50 from scratch, 37 breeds | 50 | 36.09% (48) | 35.92% (50) | 3.711 | ≈ 45 min | RTX 3050 6GB Laptop, torch 2.14.1+cu130 | 42 | `0cfedcf` | [`A_scratch_37cls/`](A_scratch_37cls/) · local `runs/2026-11-13_A_scratch_37cls` |
-| B. Pretrained ResNet-50 (IMAGENET1K_V2), 37 breeds | 10 | 93.35% (9) | 93.35% (10) | 0.288 | 5.2 min | same | 42 | `0cfedcf` | [`B_transfer_37cls/`](B_transfer_37cls/) · local `runs/2026-11-13_B_transfer_37cls` |
-| C. Pretrained ResNet-50 (IMAGENET1K_V2), cat vs dog | 10 | 99.84% (4) | 99.78% (10) | 0.008 | 4.9 min | same | 42 | `0cfedcf` | [`C_transfer_2cls/`](C_transfer_2cls/) · local `runs/2026-11-13_C_transfer_2cls` |
+Mean ± sample standard deviation (n − 1) over the 3 seeds. Accuracies in %, rounded to two decimals.
 
-Checkpoints: `best_model.pth` = best epoch above, `last_model.pth` = final epoch (both in `runs/<run>/checkpoints/`).
+## Aggregate
 
-## Other metrics
+| Experiment | n | Test acc, best-val checkpoint (%) | Test acc, last epoch (%) | Val acc at best (%) | Train acc at last (augmented, %) | Train time (min) |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|
+| A. ResNet-50 from scratch, 37 breeds, 50 epochs | 3 | **31.99 ± 1.13** | 32.25 ± 0.75 | 38.45 ± 0.47 | 73.12 ± 1.66 | 29.67 ± 1.21 |
+| B. Pretrained ResNet-50 (IMAGENET1K_V2), 37 breeds, 10 epochs | 3 | **92.39 ± 0.27** | 92.45 ± 0.22 | 94.93 ± 0.51 | 99.47 ± 0.12 | 3.12 ± 0.06 |
+| C. Pretrained ResNet-50 (IMAGENET1K_V2), cat vs dog, 10 epochs | 3 | **99.65 ± 0.07** | 99.61 ± 0.04 | 99.91 ± 0.08 | 99.95 ± 0.04 | 2.89 ± 0.01 |
 
-| Experiment | Lowest test loss (epoch) | Final train acc (augmented) |
-|---|:-:|:-:|
-| A | 2.679 (26) | 77.96% |
-| B | 0.280 (9) | 99.43% |
-| C | 0.006 (4) | 99.95% |
+Train time is the sum of the per-epoch times (training + validation) and does not include the final test evaluation.
 
-## Curves
+## Per seed
 
-![A](A_scratch_37cls_curves.png)
-![B](B_transfer_37cls_curves.png)
-![C](C_transfer_2cls_curves.png)
+| Experiment | Seed | Val best epoch / last | Val acc at best (%) | Test acc at best-val (%) | Test loss at best-val | Test acc at last epoch (%) | Test loss at last | Train acc at last (augmented, %) | Train time (min) |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| A | 42 | 41 / 50 | 38.72 | 30.74 | 3.1512 | 31.40 | 3.5155 | 72.25 | 28.67 |
+| A | 43 | 48 / 50 | 37.91 | 32.95 | 3.0587 | 32.79 | 3.0641 | 75.03 | 29.32 |
+| A | 44 | 48 / 50 | 38.72 | 32.27 | 3.5487 | 32.57 | 3.7862 | 72.08 | 31.02 |
+| B | 42 | 10 / 10 | 95.52 | 92.70 | 0.2906 | 92.70 | 0.2906 | 99.35 | 3.09 |
+| B | 43 | 9 / 10 | 94.70 | 92.23 | 0.3342 | 92.26 | 0.3305 | 99.46 | 3.09 |
+| B | 44 | 9 / 10 | 94.57 | 92.23 | 0.3002 | 92.40 | 0.3012 | 99.59 | 3.19 |
+| C | 42 | 4 / 10 | 100.00 | 99.62 | 0.0116 | 99.56 | 0.0152 | 99.93 | 2.91 |
+| C | 43 | 7 / 10 | 99.86 | 99.73 | 0.0116 | 99.62 | 0.0132 | 99.93 | 2.88 |
+| C | 44 | 3 / 10 | 99.86 | 99.59 | 0.0208 | 99.65 | 0.0127 | 100.00 | 2.89 |
 
-## Confusion matrices (test split, final epoch, exported from TensorBoard)
+The artifacts of every run (`config.json`, `metrics.csv`, `summary.json`, `train.log`, test confusion matrix of the best-val checkpoint) are in `results/<experiment>/seed<k>/`. Checkpoints and TensorBoard files stay local in `runs/` (gitignored). The tables above are generated by `uv run python -m oxiii_pet.utils.aggregate_results --date 2026-11-13` (also written to [`tables.md`](tables.md) and [`aggregate.json`](aggregate.json)).
 
-- [A. From scratch, 37 breeds](A_scratch_37cls_confusion_matrix.png)
-- [B. Transfer learning, 37 breeds](B_transfer_37cls_confusion_matrix.png)
-- [C. Transfer learning, cat vs dog](C_transfer_2cls_confusion_matrix.png)
+### A seed 43 re-run
+
+The first A seed 43 run did not finish normally, so it was **replaced by an uninterrupted re-run with the same seed, split and settings**. The first run is kept, not deleted, in [`A_scratch_37cls/seed43_crashed_resumed/`](A_scratch_37cls/seed43_crashed_resumed/) and is excluded from the tables above.
+
+What happened to the first run:
+
+- **Crash.** It crashed during epoch 37 with exit code 1. Epoch 36 finished at 20:05:41 and the exit was logged at 20:09:52, while an epoch normally takes about 40 s. No traceback was kept, because the run script sent stdout/stderr to `/dev/null` at the time (fixed: it now keeps `stdout_stderr.txt` per run). The kernel log shows GPU-passthrough (`dxg`) ioctl errors around that time, so a GPU/driver problem is likely, but the cause is not confirmed.
+- **Resume.** It was resumed from the epoch-36 checkpoint. The resume code of that commit called `set_seed(43)` again without restoring the random-number state, so epoch 37 replayed the data order and augmentations of epoch 1. Train accuracy jumped from 49.56% to 64.64% in one epoch; the clean re-run goes from 53.43% to 54.76% at the same epoch. The resume bug is fixed in `bca1602`.
+- **Its results:** best-val epoch 48, val 35.33%, test 29.38% at the best-val checkpoint and 29.87% at the last epoch, train accuracy 76.70%. With it instead of the re-run, A would be 30.80 ± 1.45% (best-val) and 31.28 ± 1.35% (last).
+- **Order of events.** The re-run was decided because of the procedural defect, not because of the result. It was started after the first run's test numbers were known. Both runs are reported.
+
+## Plots
+
+Train vs validation, mean over the 3 seeds with a ±1 std band:
+
+![A](A_scratch_37cls/curves.png)
+![B](B_transfer_37cls/curves.png)
+![C](C_transfer_2cls/curves.png)
+
+Validation accuracy, A vs B:
+
+![A vs B](A_vs_B_val_accuracy.png)
+
+Test confusion matrices (best-val checkpoint, one per seed): `A_scratch_37cls/seed42/test_confusion_matrix_best_val.png` and the same file for every experiment and seed.
+
+## Difference from the previous (superseded) numbers
+
+The previous README reported single-seed runs (seed 42) whose `best_model.pth` was chosen on the test split ([`legacy_test_selected/`](legacy_test_selected/)).
+
+| Experiment | Old: best test acc (test-selected) | Old: final epoch | New: test acc at best-val (mean of 3) | New: test acc at last epoch (mean of 3) | Change, best | Change, last |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|
+| A | 36.09% | 35.92% | 31.99% | 32.25% | −4.10 pp | −3.67 pp |
+| B | 93.35% | 93.35% | 92.39% | 92.45% | −0.96 pp | −0.90 pp |
+| C | 99.84% | 99.78% | 99.65% | 99.61% | −0.19 pp | −0.17 pp |
+
+All three are lower. Two changes act together and cannot be separated with these runs:
+
+1. Models are now trained on 2944 instead of 3680 images, since 20% of `trainval.txt` is held out for validation.
+2. The checkpoint is no longer picked on the test split.
+
+The second can only explain part of the gap: the old final-epoch numbers involved no selection, and they are also higher (A: 35.92% vs 32.25% now). The larger drop for A is consistent with a from-scratch model being the most data-limited. The new runs also differ by seed: the old values were seed 42 only.
 
 ## Notes
 
-- Single seed (42). cuDNN is not forced deterministic, so a re-run on GPU will not be bit-identical; from-scratch accuracy moved 1–2 points between consecutive epochs, so treat differences of that size as noise.
-- Run A shows clear overfitting (train 78% vs test 36%) and noisy test loss with spikes at epochs 3, 14 and 22 while the learning rate was high.
-- View the TensorBoard logs (scalars and per-epoch confusion matrices) with `uv run tensorboard --logdir runs/`.
+- **A overfits.** Augmented train accuracy reaches 72.08–75.03%, while validation accuracy ends at 36.28–38.72% and test accuracy is 30.74–32.95% across seeds and checkpoints. Validation loss after the first epoch is very large for seed 42 (85.1; 6.9 and 6.7 for the other seeds) and drops to about 4 by epoch 2. The loss plot uses a log scale for that reason.
+- **A's validation accuracy is higher than its test accuracy** (38.45% vs 31.99%). Part of this comes from choosing the best of 50 noisy epochs on only 736 images (about 20 per breed), which is exactly the bias the test split is kept free of. The validation and test images may also simply differ.
+- **B and C barely depend on the checkpoint choice.** Best-val and last-epoch test accuracy differ by at most 0.17 points per seed.
+- **C saturates.** One seed reaches 100.00% validation accuracy at epoch 4, and test accuracy stays between 99.56% and 99.73% for every seed and checkpoint.
+- **Not bit-exact.** cuDNN is not forced deterministic, so GPU re-runs will not reproduce these numbers exactly.

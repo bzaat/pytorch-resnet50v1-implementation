@@ -37,6 +37,27 @@ def set_seed(seed):
     return generator, worker_init_fn
 
 
+def get_rng_state(generator):
+    """RNG states that drive training, stored in checkpoints so a resume does not replay epoch 1.
+
+    Only torch states (tensors) are kept, so checkpoints still load with torch.load(weights_only=True).
+    They cover what matters: the DataLoader generator sets the shuffle order and the worker seeds
+    (augmentations use torch's RNG; worker_init_fn derives the NumPy/Python seeds from it), and the
+    CPU/CUDA states drive dropout."""
+    return {
+        "torch": torch.get_rng_state(),
+        "cuda": torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None,
+        "dataloader_generator": generator.get_state(),
+    }
+
+
+def set_rng_state(state, generator):
+    torch.set_rng_state(state["torch"].cpu())
+    if state.get("cuda") is not None and torch.cuda.is_available():
+        torch.cuda.set_rng_state_all([s.cpu() for s in state["cuda"]])
+    generator.set_state(state["dataloader_generator"].cpu())
+
+
 def default_run_dir(tag):
     return os.path.join("runs", f"{datetime.now():%Y-%m-%d_%H%M}_{tag}")
 
@@ -112,26 +133,90 @@ def get_class_names(num_class, root):
     return [names[i] for i in sorted(names)]
 
 
-def plot_confusion_matrix(writer, cm, class_names, epoch):
+def plot_confusion_matrix(writer, cm, class_names, epoch, tag="Validation/confusion_matrix",
+                          title="Confusion matrix (validation split)"):
     """Log a row-normalized confusion matrix figure to TensorBoard."""
-    figure = plt.figure(figsize=(20, 20))
-    plt.imshow(cm, interpolation="nearest", cmap="ocean")
-    plt.title("Confusion matrix")
-    plt.colorbar()
+    figure = confusion_matrix_figure(cm, class_names, title)
+    writer.add_figure(tag, figure, epoch)
+    plt.close(figure)
+
+
+def save_confusion_matrix_png(cm, class_names, path, title):
+    figure = confusion_matrix_figure(cm, class_names, title)
+    figure.savefig(path, dpi=60 if len(class_names) > 10 else 100)
+    plt.close(figure)
+
+
+def confusion_matrix_figure(cm, class_names, title="Confusion matrix"):
+    """Row-normalized confusion matrix: rows = true class, columns = predicted class."""
+    size = 20 if len(class_names) > 10 else 6
+    figure = plt.figure(figsize=(size, size))
+    # Colors and numbers both show the row-normalized value (fraction of the true class).
+    cm = np.around(cm.astype("float") / np.maximum(cm.sum(axis=1)[:, np.newaxis], 1), decimals=2)
+    plt.imshow(cm, interpolation="nearest", cmap="Blues", vmin=0.0, vmax=1.0)
+    plt.title(title, fontsize=16 if size == 20 else 10)
+    plt.colorbar(fraction=0.046, pad=0.04)
     tick_marks = np.arange(len(class_names))
     plt.xticks(tick_marks, class_names, rotation=90)
     plt.yticks(tick_marks, class_names)
-    cm = np.around(cm.astype("float") / np.maximum(cm.sum(axis=1)[:, np.newaxis], 1), decimals=2)
-    threshold = cm.max() / 2.0
     for i in range(cm.shape[0]):
         for j in range(cm.shape[1]):
-            color = "white" if cm[i, j] > threshold else "black"
-            plt.text(j, i, cm[i, j], horizontalalignment="center", color=color)
-    plt.tight_layout()
+            color = "white" if cm[i, j] > 0.5 else "black"
+            plt.text(j, i, f"{cm[i, j]:.2f}", horizontalalignment="center", verticalalignment="center",
+                     color=color)
     plt.ylabel("True label")
     plt.xlabel("Predicted label")
-    writer.add_figure("confusion_matrix", figure, epoch)
-    plt.close(figure)
+    plt.tight_layout()
+    return figure
+
+
+def final_test_evaluation(model, test_loader, criterion, device, ckpt_dir, run_dir, num_class,
+                          class_names, logger, extra=None):
+    """Evaluate best_model.pth (best validation accuracy) and last_model.pth on the test split,
+    exactly once each, and write summary.json. This is the only place the test split is used."""
+    from sklearn.metrics import confusion_matrix
+
+    results = {}
+    for name in ("best_model", "last_model"):
+        ckpt = torch.load(os.path.join(ckpt_dir, f"{name}.pth"), map_location=device)
+        model.load_state_dict(ckpt["model"])
+        loss, acc, preds, labels = run_epoch(model, test_loader, criterion, device, desc=f"Test  {name}")
+        results[name] = {"epoch": ckpt["epoch"], "test_acc": acc, "test_loss": loss}
+        logger.info("Test (%s, epoch %d): loss %.4f acc %.4f", name, ckpt["epoch"], loss, acc)
+        if name == "best_model":
+            cm = confusion_matrix(labels.numpy(), preds.numpy(), labels=list(range(num_class)))
+            save_confusion_matrix_png(
+                cm, class_names, os.path.join(run_dir, "test_confusion_matrix_best_val.png"),
+                f"Test split, checkpoint with best validation accuracy (epoch {ckpt['epoch']})")
+
+    df = pd.read_csv(os.path.join(run_dir, "metrics.csv"))
+    best_epoch, last_epoch = results["best_model"]["epoch"], results["last_model"]["epoch"]
+    row_best = df[df["epoch"] == best_epoch].iloc[-1]
+    row_last = df[df["epoch"] == last_epoch].iloc[-1]
+    summary = {
+        "val_best_epoch": int(best_epoch),
+        "val_best_acc": float(row_best["val_acc"]),
+        "val_best_loss": float(row_best["val_loss"]),
+        "test_acc_at_best_val": results["best_model"]["test_acc"],
+        "test_loss_at_best_val": results["best_model"]["test_loss"],
+        "last_epoch": int(last_epoch),
+        "val_acc_at_last": float(row_last["val_acc"]),
+        "test_acc_at_last": results["last_model"]["test_acc"],
+        "test_loss_at_last": results["last_model"]["test_loss"],
+        "train_acc_at_best_val": float(row_best["train_acc"]),
+        "train_acc_at_last": float(row_last["train_acc"]),
+        "train_time_s": round(float(df["epoch_time_s"].sum()), 1),
+        "n_train": None, "n_val": None, "n_test": len(test_loader.dataset),
+        "note": ("Checkpoint selected on the validation split (20% of trainval.txt). The official test split "
+                 "is evaluated once per checkpoint after training. train_acc is the running accuracy on "
+                 "augmented training batches in train mode. train_time_s sums the per-epoch times "
+                 "(training + validation) and excludes the final test evaluation."),
+    }
+    summary.update(extra or {})
+    with open(os.path.join(run_dir, "summary.json"), "w") as f:
+        json.dump(summary, f, indent=2)
+    logger.info("Summary: %s", json.dumps(summary))
+    return summary
 
 
 def run_epoch(model, loader, criterion, device, optimizer=None, desc="", clip=0.0,
