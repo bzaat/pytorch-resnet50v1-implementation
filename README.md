@@ -40,7 +40,7 @@ Two models are included so they can be compared on the same data: a ResNet-50 tr
 
 | Model (37 breeds, official test split) | Test accuracy, checkpoint selected on validation | Test accuracy, last epoch |
 |----------------------------------------|:------------------:|:-----------:|
-| ResNet-50 from scratch, 50 epochs | 30.80 ± 1.45% | 31.28 ± 1.35% |
+| ResNet-50 from scratch, 50 epochs | 31.99 ± 1.13% | 32.25 ± 0.75% |
 | Pretrained ResNet-50, fine-tuned, 10 epochs | **92.39 ± 0.27%** | **92.45 ± 0.22%** |
 
 Test accuracy on the official `test.txt` split (3669 images), mean ± sample standard deviation over 3 seeds (42, 43, 44). The checkpoint is selected on a held-out validation split (20% of `trainval.txt`), and the test split is evaluated only once per checkpoint, after training. See [Experimental Protocol](#experimental-protocol), [`results/summary.md`](results/summary.md) and [How to reproduce](#how-to-reproduce).
@@ -425,34 +425,34 @@ flowchart TD
 
 ## Results
 
-All numbers come from the runs of 2026-11-13: training seeds 42, 43 and 44 for each experiment, one NVIDIA RTX 3050 6GB Laptop GPU, PyTorch 2.14.1+cu130, commit `8ba4cee`. The checkpoint is selected on the validation split, and the official test split (3669 images) is evaluated once per checkpoint after training (see [Experimental Protocol](#experimental-protocol)). Values are the mean ± sample standard deviation over the 3 seeds.
+All numbers come from the runs of 2026-11-13: training seeds 42, 43 and 44 for each experiment, one NVIDIA RTX 3050 6GB Laptop GPU, PyTorch 2.14.1+cu130, commit `8ba4cee` (A seed 43: `bca1602`, same training code). The checkpoint is selected on the validation split, and the official test split (3669 images) is evaluated once per checkpoint after training (see [Experimental Protocol](#experimental-protocol)). Values are the mean ± sample standard deviation over the 3 seeds.
 
 | Experiment | Test acc, best-val checkpoint | Test acc, last epoch | Val acc at best epoch | Train acc, last epoch (augmented) | Train time |
 |---|:-:|:-:|:-:|:-:|:-:|
-| A. ResNet-50 from scratch, 37 breeds, 50 epochs | **30.80 ± 1.45%** | 31.28 ± 1.35% | 37.59 ± 1.96% | 73.68 ± 2.62% | 30.06 ± 1.23 min |
+| A. ResNet-50 from scratch, 37 breeds, 50 epochs | **31.99 ± 1.13%** | 32.25 ± 0.75% | 38.45 ± 0.47% | 73.12 ± 1.66% | 29.67 ± 1.21 min |
 | B. Pretrained ResNet-50 (`IMAGENET1K_V2`), 37 breeds, 10 epochs | **92.39 ± 0.27%** | 92.45 ± 0.22% | 94.93 ± 0.51% | 99.47 ± 0.12% | 3.12 ± 0.06 min |
 | C. Pretrained ResNet-50 (`IMAGENET1K_V2`), cat vs dog, 10 epochs | **99.65 ± 0.07%** | 99.61 ± 0.04% | 99.91 ± 0.08% | 99.95 ± 0.04% | 2.89 ± 0.01 min |
 
 [`results/summary.md`](results/summary.md) has the per-seed table (best-val epoch, test accuracy and loss for both checkpoints), the plots and the details. Each run's `config.json`, `metrics.csv`, `summary.json`, `train.log` and test confusion matrix are in `results/<experiment>/seed<k>/`.
 
-> **Changed protocol.** Earlier versions of this README reported single-seed numbers (A 36.09%, B 93.35%, C 99.84%) for which `best_model.pth` was chosen on the test split. Those runs are kept in [`results/legacy_test_selected/`](results/legacy_test_selected/) and are superseded. The new numbers are lower by 5.29 (A), 0.96 (B) and 0.19 (C) points. Two things changed at once: the models now train on 2944 instead of 3680 images, and the test split no longer selects the checkpoint, so the gap cannot be attributed to either one alone.
+> **Changed protocol.** Earlier versions of this README reported single-seed numbers (A 36.09%, B 93.35%, C 99.84%) for which `best_model.pth` was chosen on the test split. Those runs are kept in [`results/legacy_test_selected/`](results/legacy_test_selected/) and are superseded. The new numbers are lower by 4.10 (A), 0.96 (B) and 0.19 (C) points. Two things changed at once: the models now train on 2944 instead of 3680 images, and the test split no longer selects the checkpoint, so the gap cannot be attributed to either one alone.
 
-> **A seed 43** crashed during epoch 37 and was resumed from its epoch-36 checkpoint. The resume code of that commit replayed the data order of epoch 1, which inflates that seed's train accuracy after epoch 36 (this is now fixed). Its validation and test numbers are reported unchanged. Details in [`results/summary.md`](results/summary.md#-a-seed-43-was-interrupted-and-resumed).
+> **A seed 43** was re-run from scratch. The first run crashed during epoch 37 and was resumed with a resume bug (now fixed) that replayed the data order of epoch 1. That run is kept, but not used in the tables: test 29.38% at the best-val checkpoint, 29.87% at the last epoch. Including it instead, A would be 30.80 ± 1.45%. Details in [`results/summary.md`](results/summary.md#a-seed-43-re-run).
 
 ### From scratch (37 breeds)
 
 ![From-scratch curves, mean ± std over 3 seeds](results/A_scratch_37cls/curves.png)
 
-- The model overfits: augmented train accuracy reaches 72–77%, while test accuracy is 29.38–32.57% across seeds and checkpoints. Random guessing would give 2.7% (loss ≈ 3.61).
-- Validation loss is very large after the first epoch for two seeds (85.1 and 43.3) and falls to about 4 by epoch 2. The loss panel uses a log scale for that reason.
-- Validation accuracy at the best epoch (37.59%) is higher than test accuracy (30.80%). Picking the best of 50 noisy epochs on 736 validation images is optimistic, which is why the test split is kept separate.
+- The model overfits: augmented train accuracy reaches 72.08–75.03%, while test accuracy is 30.74–32.95% across seeds and checkpoints. Random guessing would give 2.7% (loss ≈ 3.61).
+- Validation loss is very large after the first epoch for seed 42 (85.1; 6.9 and 6.7 for the other seeds) and falls to about 4 by epoch 2. The loss panel uses a log scale for that reason.
+- Validation accuracy at the best epoch (38.45%) is higher than test accuracy (31.99%). Picking the best of 50 noisy epochs on 736 validation images is optimistic, which is why the test split is kept separate.
 - Training a ~23.6M-parameter network from scratch on 2944 images is data-limited. Starting from pretrained weights removes most of that limit.
 
 ### Transfer learning (37 breeds)
 
 ![Transfer-learning curves (37 breeds), mean ± std over 3 seeds](results/B_transfer_37cls/curves.png)
 
-- Pretraining on ImageNet raises 37-breed test accuracy from 30.80 ± 1.45% to 92.39 ± 0.27%. After one epoch, validation accuracy is already 73.73% (mean over seeds), well above the 50-epoch from-scratch model.
+- Pretraining on ImageNet raises 37-breed test accuracy from 31.99 ± 1.13% to 92.39 ± 0.27%. After one epoch, validation accuracy is already 73.73% (mean over seeds), well above the 50-epoch from-scratch model.
 - Best-val and last-epoch checkpoints give almost the same test accuracy (largest per-seed difference: 0.17 points).
 - Train accuracy reaches 99.5% while validation loss levels off around 0.18, so some overfitting remains.
 
@@ -510,7 +510,7 @@ cuDNN is not forced into deterministic mode, so a re-run on a GPU will not repro
 
 ## Project Status
 
-The project is complete: data pipeline, ResNet-50 from scratch, training with TensorBoard logging and checkpointing, a transfer-learning variant, and an evaluation protocol with a held-out validation split and 3 seeds. On the 37-breed test split the from-scratch model reaches 30.80 ± 1.45% and the fine-tuned pretrained model 92.39 ± 0.27% (see [Results](#results)).
+The project is complete: data pipeline, ResNet-50 from scratch, training with TensorBoard logging and checkpointing, a transfer-learning variant, and an evaluation protocol with a held-out validation split and 3 seeds. On the 37-breed test split the from-scratch model reaches 31.99 ± 1.13% and the fine-tuned pretrained model 92.39 ± 0.27% (see [Results](#results)).
 
 **Done**
 
