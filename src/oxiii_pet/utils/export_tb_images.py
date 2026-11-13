@@ -1,4 +1,6 @@
-"""Export an image logged to TensorBoard (default: the confusion matrix of the last epoch) as a PNG.
+"""Export an image logged to TensorBoard (default: the validation confusion matrix of the last epoch) as a PNG.
+
+Runs made before the validation split log the matrix under the old tag "confusion_matrix" (pass --tag).
 
 Usage: uv run python -m oxiii_pet.utils.export_tb_images runs/<run> -o results/<name>_confusion_matrix.png
 """
@@ -14,7 +16,7 @@ def main():
     parser = ArgumentParser(description="Export a TensorBoard image to PNG")
     parser.add_argument("run_dir", help="run folder containing tensorboard/")
     parser.add_argument("--output", "-o", required=True, help="output PNG path")
-    parser.add_argument("--tag", default="confusion_matrix")
+    parser.add_argument("--tag", default="Validation/confusion_matrix")
     parser.add_argument("--step", type=int, default=None, help="epoch index (0-based); default: last")
     parser.add_argument("--max_size", type=int, default=1100, help="longest side in pixels after resizing")
     args = parser.parse_args()
