@@ -37,6 +37,27 @@ def set_seed(seed):
     return generator, worker_init_fn
 
 
+def get_rng_state(generator):
+    """RNG states that drive training, stored in checkpoints so a resume does not replay epoch 1.
+
+    Only torch states (tensors) are kept, so checkpoints still load with torch.load(weights_only=True).
+    They cover what matters: the DataLoader generator sets the shuffle order and the worker seeds
+    (augmentations use torch's RNG; worker_init_fn derives the NumPy/Python seeds from it), and the
+    CPU/CUDA states drive dropout."""
+    return {
+        "torch": torch.get_rng_state(),
+        "cuda": torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None,
+        "dataloader_generator": generator.get_state(),
+    }
+
+
+def set_rng_state(state, generator):
+    torch.set_rng_state(state["torch"].cpu())
+    if state.get("cuda") is not None and torch.cuda.is_available():
+        torch.cuda.set_rng_state_all([s.cpu() for s in state["cuda"]])
+    generator.set_state(state["dataloader_generator"].cpu())
+
+
 def default_run_dir(tag):
     return os.path.join("runs", f"{datetime.now():%Y-%m-%d_%H%M}_{tag}")
 

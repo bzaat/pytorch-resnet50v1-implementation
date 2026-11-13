@@ -16,8 +16,8 @@ from sklearn.metrics import confusion_matrix
 from oxiii_pet.model.models import Resnet50
 from oxiii_pet.dataset.dataset_oxiiit_pet import DEFAULT_SPLIT_FILE, OxfordData
 from oxiii_pet.utils.run_utils import (
-    MetricsCSV, default_run_dir, final_test_evaluation, get_class_names, plot_confusion_matrix,
-    run_epoch, set_seed, setup_run,
+    MetricsCSV, default_run_dir, final_test_evaluation, get_class_names, get_rng_state, plot_confusion_matrix,
+    run_epoch, set_rng_state, set_seed, setup_run,
 )
 
 
@@ -126,7 +126,17 @@ def main():
         scheduler.load_state_dict(checkpoint["scheduler"])
         best_val_accuracy = checkpoint["best_acc"]
         best_epoch = checkpoint.get("best_epoch")
-        logger.info("Resumed from %s at epoch %d", args.checkpoint, start_epoch)
+        if checkpoint.get("rng_state") is not None:
+            set_rng_state(checkpoint["rng_state"], generator)
+            logger.info("Resumed from %s at epoch %d (RNG state restored)", args.checkpoint, start_epoch)
+        else:
+            # Older checkpoints have no RNG state. Without this reseed, set_seed(seed) above would make the
+            # next epoch replay the shuffle order and augmentations of epoch 1.
+            set_seed(args.seed * 1000 + start_epoch)
+            generator.manual_seed(args.seed * 1000 + start_epoch)
+            logger.warning("Resumed from %s at epoch %d; checkpoint has no RNG state, reseeded with %d "
+                           "(data order differs from an uninterrupted run)",
+                           args.checkpoint, start_epoch, args.seed * 1000 + start_epoch)
     else:
         start_epoch = 0
         best_val_accuracy = -1.0  # so epoch 1 is always saved as best, even at 0% accuracy
@@ -158,6 +168,7 @@ def main():
             "val_acc": val_accuracy,
             "num_class": num_class,
             "class_names": class_names,
+            "rng_state": get_rng_state(generator),
         }
         torch.save(checkpoint, "{}/last_model.pth".format(args.trained_model))
         if is_best:
