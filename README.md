@@ -366,7 +366,7 @@ ResNet-50 trained from scratch (no pretrained weights) for 50 epochs with batch 
 | Final test loss | 3.711 |
 | Final training accuracy (augmented images) | 77.96% |
 | Random-guess reference | 2.7% accuracy, loss ≈ 3.61 |
-| Training time | ≈ 53 s/epoch (median); 61.5 min in total, because epochs 1–6 shared the GPU with another job |
+| Training time | ≈ 53 s/epoch (median); ≈ 45 min in total |
 
 ![From-scratch curves](results/A_scratch_37cls_curves.png)
 
