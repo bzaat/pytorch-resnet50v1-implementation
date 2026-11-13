@@ -49,6 +49,9 @@ def main():
     plot_band(ax_loss, df, "train_loss", "train (epoch mean, augmented)")
     plot_band(ax_loss, df, "val_loss", "validation")
     ax_loss.set_xlabel("epoch"); ax_loss.set_ylabel("cross-entropy loss"); ax_loss.set_title("Loss")
+    losses = df[["train_loss", "val_loss"]]
+    if losses.max().max() / max(losses.min().min(), 1e-6) > 50:  # e.g. a large first-epoch spike
+        ax_loss.set_yscale("log"); ax_loss.set_ylabel("cross-entropy loss (log scale)")
     plot_band(ax_acc, df, "train_acc", "train (augmented)", scale=100)
     plot_band(ax_acc, df, "val_acc", "validation", scale=100)
     if len(args.run_dirs) == 1:
