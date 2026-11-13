@@ -1,4 +1,7 @@
-# Results summary (re-run 2026-11-13)
+# SUPERSEDED: results summary (re-run 2026-11-13, test split used for model selection)
+
+> Superseded. These runs selected `best_model.pth` on the test split and used a single seed. See
+> [`README.md`](README.md) in this folder and the current results in [`../summary.md`](../summary.md).
 
 All numbers below come from the runs listed here; each run folder in `results/` holds its `config.json`, `metrics.csv` (one row per epoch), `summary.json` and `train.log`. Raw checkpoints and TensorBoard event files stay local under `runs/` (gitignored).
 
