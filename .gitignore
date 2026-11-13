@@ -22,3 +22,6 @@ oxiii_pet.egg-info
 # Training logs
 runs/
 tensorboard/
+
+# Inference outputs
+result_*.png

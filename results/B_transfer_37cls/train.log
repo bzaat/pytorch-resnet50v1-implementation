@@ -1,0 +1,16 @@
+2026-11-13 13:56:03 | INFO | Run dir: runs/2026-11-13_B_transfer_37cls
+2026-11-13 13:56:03 | INFO | Config: {"experiment": "transfer", "args": {"data_path": "data", "epoch": 10, "image_size": 224, "num_classes": 37, "batch_size": 32, "version": 2, "run_dir": "runs/2026-11-13_B_transfer_37cls", "trained_model": "runs/2026-11-13_B_transfer_37cls/checkpoints", "seed": 42, "num_workers": 4}, "seed": 42, "start_time": "2026-11-13T13:56:03", "git_commit": "0cfedcf5b2639a0e11c82c608c7c4b907ce4486f", "git_dirty": false, "python": "3.10.12", "torch": "2.14.1+cu130", "torchvision": "0.29.1+cu130", "cuda": "13.0", "cudnn": 92400, "cuda_available": true, "gpu": "NVIDIA GeForce RTX 3050 6GB Laptop GPU", "cpu_count": 4, "deterministic_note": "Seeded, but cuDNN kernels are not forced deterministic; GPU runs are not bit-exact."}
+2026-11-13 13:56:03 | INFO | Device: cuda
+2026-11-13 13:56:04 | INFO | Trainable params: 17100837 / 25644133
+2026-11-13 13:56:04 | INFO | Train samples: 3680 | Test samples: 3669
+2026-11-13 13:56:40 | INFO | Epoch 1/10 | lr 1.000e-02 | train loss 1.6650 acc 0.5696 | val loss 0.8744 acc 0.7501 | 36.0s | new best, saved best_model.pth
+2026-11-13 13:57:12 | INFO | Epoch 2/10 | lr 9.755e-03 | train loss 0.7674 acc 0.7679 | val loss 0.4844 acc 0.8471 | 32.2s | new best, saved best_model.pth
+2026-11-13 13:57:44 | INFO | Epoch 3/10 | lr 9.045e-03 | train loss 0.4335 acc 0.8688 | val loss 0.5414 acc 0.8340 | 31.7s
+2026-11-13 13:58:12 | INFO | Epoch 4/10 | lr 7.939e-03 | train loss 0.2921 acc 0.9114 | val loss 0.3486 acc 0.8970 | 27.9s | new best, saved best_model.pth
+2026-11-13 13:58:42 | INFO | Epoch 5/10 | lr 6.545e-03 | train loss 0.1664 acc 0.9448 | val loss 0.3904 acc 0.8953 | 30.6s
+2026-11-13 13:59:12 | INFO | Epoch 6/10 | lr 5.000e-03 | train loss 0.0965 acc 0.9701 | val loss 0.3641 acc 0.9035 | 30.3s | new best, saved best_model.pth
+2026-11-13 13:59:43 | INFO | Epoch 7/10 | lr 3.455e-03 | train loss 0.0650 acc 0.9802 | val loss 0.3104 acc 0.9289 | 30.5s | new best, saved best_model.pth
+2026-11-13 14:00:14 | INFO | Epoch 8/10 | lr 2.061e-03 | train loss 0.0400 acc 0.9845 | val loss 0.3235 acc 0.9248 | 30.8s
+2026-11-13 14:00:44 | INFO | Epoch 9/10 | lr 9.549e-04 | train loss 0.0315 acc 0.9899 | val loss 0.2805 acc 0.9335 | 30.3s | new best, saved best_model.pth
+2026-11-13 14:01:14 | INFO | Epoch 10/10 | lr 2.447e-04 | train loss 0.0209 acc 0.9943 | val loss 0.2880 acc 0.9335 | 30.2s
+2026-11-13 14:01:14 | INFO | Summary: {"best_val_acc": 0.9334968656309621, "best_epoch": 9, "final_val_acc": 0.9334968656309621, "final_val_loss": 0.2879545522948298, "final_epoch": 10, "train_time_s_this_session": 310.4, "note": "val = official test.txt split (also used to select best_model.pth)"}

@@ -1,0 +1,9 @@
+{
+  "best_val_acc": 0.9334968656309621,
+  "best_epoch": 9,
+  "final_val_acc": 0.9334968656309621,
+  "final_val_loss": 0.2879545522948298,
+  "final_epoch": 10,
+  "train_time_s_this_session": 310.4,
+  "note": "val = official test.txt split (also used to select best_model.pth)"
+}
