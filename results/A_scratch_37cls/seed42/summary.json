@@ -1,0 +1,20 @@
+{
+  "val_best_epoch": 41,
+  "val_best_acc": 0.387228,
+  "val_best_loss": 2.722528,
+  "test_acc_at_best_val": 0.30744071954210955,
+  "test_loss_at_best_val": 3.1511762849834253,
+  "last_epoch": 50,
+  "val_acc_at_last": 0.387228,
+  "test_acc_at_last": 0.31398201144726084,
+  "test_loss_at_last": 3.5155043023001045,
+  "train_acc_at_best_val": 0.626019,
+  "train_acc_at_last": 0.722486,
+  "train_time_s": 1720.4,
+  "n_train": 2944,
+  "n_val": 736,
+  "n_test": 3669,
+  "note": "Checkpoint selected on the validation split (20% of trainval.txt). The official test split is evaluated once per checkpoint after training. train_acc is the running accuracy on augmented training batches in train mode. train_time_s sums the per-epoch times (training + validation) and excludes the final test evaluation.",
+  "split_file": "splits/trainval_80_20_seed0.json",
+  "seed": 42
+}

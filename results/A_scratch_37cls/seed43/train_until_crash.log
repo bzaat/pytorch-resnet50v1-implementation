@@ -1,0 +1,40 @@
+2026-11-13 19:43:47 | INFO | Run dir: runs/2026-11-13_A_scratch_37cls_seed43
+2026-11-13 19:43:47 | INFO | Config: {"experiment": "scratch", "args": {"epochs": 50, "images_size": 224, "batch_size": 32, "dir": "data", "run_dir": "runs/2026-11-13_A_scratch_37cls_seed43", "logging": "runs/2026-11-13_A_scratch_37cls_seed43/tensorboard", "trained_model": "runs/2026-11-13_A_scratch_37cls_seed43/checkpoints", "checkpoint": null, "num_class": 37, "clip": 0.0, "seed": 43, "num_workers": 4, "split_file": "splits/trainval_80_20_seed0.json"}, "seed": 43, "start_time": "2026-11-13T19:43:47", "git_commit": "8ba4cee2f01c2aa5e35503586aa4e01141103e5b", "git_dirty": false, "python": "3.10.12", "torch": "2.14.1+cu130", "torchvision": "0.29.1+cu130", "cuda": "13.0", "cudnn": 92400, "cuda_available": true, "gpu": "NVIDIA GeForce RTX 3050 6GB Laptop GPU", "cpu_count": 4, "deterministic_note": "Seeded, but cuDNN kernels are not forced deterministic; GPU runs are not bit-exact."}
+2026-11-13 19:43:47 | INFO | Device: cuda
+2026-11-13 19:43:47 | INFO | Train samples: 2944 | Val samples: 736 | Test samples: 3669 (test used once, after training)
+2026-11-13 19:44:23 | INFO | Epoch 1/50 | lr 1.000e-02 | train loss 4.8625 acc 0.0312 | val loss 43.3211 acc 0.0204 | 35.9s | new best val acc, saved best_model.pth
+2026-11-13 19:44:57 | INFO | Epoch 2/50 | lr 9.990e-03 | train loss 4.1148 acc 0.0268 | val loss 3.6727 acc 0.0435 | 34.2s | new best val acc, saved best_model.pth
+2026-11-13 19:45:31 | INFO | Epoch 3/50 | lr 9.961e-03 | train loss 3.7887 acc 0.0408 | val loss 4.5807 acc 0.0516 | 33.7s | new best val acc, saved best_model.pth
+2026-11-13 19:46:05 | INFO | Epoch 4/50 | lr 9.911e-03 | train loss 3.6358 acc 0.0564 | val loss 3.5699 acc 0.0516 | 33.5s
+2026-11-13 19:46:38 | INFO | Epoch 5/50 | lr 9.843e-03 | train loss 3.5606 acc 0.0625 | val loss 7.0166 acc 0.0503 | 33.5s
+2026-11-13 19:47:12 | INFO | Epoch 6/50 | lr 9.755e-03 | train loss 3.5305 acc 0.0683 | val loss 3.8640 acc 0.0516 | 33.6s
+2026-11-13 19:47:45 | INFO | Epoch 7/50 | lr 9.649e-03 | train loss 3.4444 acc 0.0832 | val loss 3.6699 acc 0.0747 | 33.5s | new best val acc, saved best_model.pth
+2026-11-13 19:48:19 | INFO | Epoch 8/50 | lr 9.524e-03 | train loss 3.4087 acc 0.0907 | val loss 3.8071 acc 0.0747 | 33.8s
+2026-11-13 19:48:53 | INFO | Epoch 9/50 | lr 9.382e-03 | train loss 3.3587 acc 0.0958 | val loss 4.4478 acc 0.0924 | 33.6s | new best val acc, saved best_model.pth
+2026-11-13 19:49:26 | INFO | Epoch 10/50 | lr 9.222e-03 | train loss 3.2844 acc 0.1053 | val loss 3.6809 acc 0.0870 | 33.6s
+2026-11-13 19:50:00 | INFO | Epoch 11/50 | lr 9.045e-03 | train loss 3.2296 acc 0.1141 | val loss 3.6108 acc 0.0965 | 33.6s | new best val acc, saved best_model.pth
+2026-11-13 19:50:33 | INFO | Epoch 12/50 | lr 8.853e-03 | train loss 3.1849 acc 0.1335 | val loss 3.6781 acc 0.1141 | 33.4s | new best val acc, saved best_model.pth
+2026-11-13 19:51:07 | INFO | Epoch 13/50 | lr 8.645e-03 | train loss 3.1410 acc 0.1427 | val loss 3.6095 acc 0.1277 | 34.1s | new best val acc, saved best_model.pth
+2026-11-13 19:51:43 | INFO | Epoch 14/50 | lr 8.423e-03 | train loss 3.0799 acc 0.1464 | val loss 3.5142 acc 0.1386 | 35.6s | new best val acc, saved best_model.pth
+2026-11-13 19:52:17 | INFO | Epoch 15/50 | lr 8.187e-03 | train loss 3.0467 acc 0.1512 | val loss 3.1479 acc 0.1359 | 34.0s
+2026-11-13 19:52:51 | INFO | Epoch 16/50 | lr 7.939e-03 | train loss 2.9790 acc 0.1719 | val loss 3.3817 acc 0.1617 | 34.1s | new best val acc, saved best_model.pth
+2026-11-13 19:53:25 | INFO | Epoch 17/50 | lr 7.679e-03 | train loss 2.9294 acc 0.1838 | val loss 3.3401 acc 0.1508 | 33.8s
+2026-11-13 19:53:59 | INFO | Epoch 18/50 | lr 7.409e-03 | train loss 2.8671 acc 0.1889 | val loss 3.3282 acc 0.1712 | 34.4s | new best val acc, saved best_model.pth
+2026-11-13 19:54:34 | INFO | Epoch 19/50 | lr 7.129e-03 | train loss 2.8098 acc 0.2011 | val loss 3.1608 acc 0.1617 | 34.9s
+2026-11-13 19:55:09 | INFO | Epoch 20/50 | lr 6.841e-03 | train loss 2.7422 acc 0.2225 | val loss 3.5756 acc 0.1793 | 34.9s | new best val acc, saved best_model.pth
+2026-11-13 19:55:43 | INFO | Epoch 21/50 | lr 6.545e-03 | train loss 2.6848 acc 0.2391 | val loss 3.6566 acc 0.1943 | 34.3s | new best val acc, saved best_model.pth
+2026-11-13 19:56:16 | INFO | Epoch 22/50 | lr 6.243e-03 | train loss 2.6316 acc 0.2554 | val loss 3.7440 acc 0.1984 | 32.9s | new best val acc, saved best_model.pth
+2026-11-13 19:56:51 | INFO | Epoch 23/50 | lr 5.937e-03 | train loss 2.6012 acc 0.2619 | val loss 3.0761 acc 0.2147 | 34.7s | new best val acc, saved best_model.pth
+2026-11-13 19:57:26 | INFO | Epoch 24/50 | lr 5.627e-03 | train loss 2.5255 acc 0.2734 | val loss 2.9691 acc 0.2283 | 35.0s | new best val acc, saved best_model.pth
+2026-11-13 19:58:03 | INFO | Epoch 25/50 | lr 5.314e-03 | train loss 2.4286 acc 0.2928 | val loss 3.4463 acc 0.2215 | 36.5s
+2026-11-13 19:58:39 | INFO | Epoch 26/50 | lr 5.000e-03 | train loss 2.3681 acc 0.3247 | val loss 2.8941 acc 0.2568 | 36.4s | new best val acc, saved best_model.pth
+2026-11-13 19:59:19 | INFO | Epoch 27/50 | lr 4.686e-03 | train loss 2.2924 acc 0.3308 | val loss 2.9496 acc 0.2704 | 40.0s | new best val acc, saved best_model.pth
+2026-11-13 19:59:57 | INFO | Epoch 28/50 | lr 4.373e-03 | train loss 2.2401 acc 0.3702 | val loss 2.9092 acc 0.2418 | 38.2s
+2026-11-13 20:00:36 | INFO | Epoch 29/50 | lr 4.063e-03 | train loss 2.1401 acc 0.3655 | val loss 3.3274 acc 0.2405 | 38.3s
+2026-11-13 20:01:13 | INFO | Epoch 30/50 | lr 3.757e-03 | train loss 2.1076 acc 0.3774 | val loss 2.7936 acc 0.2609 | 37.4s
+2026-11-13 20:02:03 | INFO | Epoch 31/50 | lr 3.455e-03 | train loss 2.0399 acc 0.3879 | val loss 3.1444 acc 0.2568 | 50.0s
+2026-11-13 20:02:46 | INFO | Epoch 32/50 | lr 3.159e-03 | train loss 1.9469 acc 0.4144 | val loss 3.0092 acc 0.2717 | 43.2s | new best val acc, saved best_model.pth
+2026-11-13 20:03:30 | INFO | Epoch 33/50 | lr 2.871e-03 | train loss 1.8785 acc 0.4273 | val loss 3.0935 acc 0.2908 | 44.0s | new best val acc, saved best_model.pth
+2026-11-13 20:04:09 | INFO | Epoch 34/50 | lr 2.591e-03 | train loss 1.8084 acc 0.4497 | val loss 2.7878 acc 0.2690 | 39.2s
+2026-11-13 20:05:00 | INFO | Epoch 35/50 | lr 2.321e-03 | train loss 1.7298 acc 0.4871 | val loss 2.9975 acc 0.2989 | 50.4s | new best val acc, saved best_model.pth
+2026-11-13 20:05:41 | INFO | Epoch 36/50 | lr 2.061e-03 | train loss 1.6611 acc 0.4956 | val loss 2.8126 acc 0.3071 | 40.9s | new best val acc, saved best_model.pth
