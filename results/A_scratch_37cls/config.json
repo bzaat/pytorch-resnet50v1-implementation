@@ -1,0 +1,30 @@
+{
+  "experiment": "scratch",
+  "args": {
+    "epochs": 50,
+    "images_size": 224,
+    "batch_size": 32,
+    "dir": "data",
+    "run_dir": "runs/2026-11-13_A_scratch_37cls",
+    "logging": "runs/2026-11-13_A_scratch_37cls/tensorboard",
+    "trained_model": "runs/2026-11-13_A_scratch_37cls/checkpoints",
+    "checkpoint": null,
+    "num_class": 37,
+    "clip": 0.0,
+    "seed": 42,
+    "num_workers": 4
+  },
+  "seed": 42,
+  "start_time": "2026-11-13T11:41:11",
+  "git_commit": "0cfedcf5b2639a0e11c82c608c7c4b907ce4486f",
+  "git_dirty": false,
+  "python": "3.10.12",
+  "torch": "2.14.1+cu130",
+  "torchvision": "0.29.1+cu130",
+  "cuda": "13.0",
+  "cudnn": 92400,
+  "cuda_available": true,
+  "gpu": "NVIDIA GeForce RTX 3050 6GB Laptop GPU",
+  "cpu_count": 4,
+  "deterministic_note": "Seeded, but cuDNN kernels are not forced deterministic; GPU runs are not bit-exact."
+}

@@ -24,6 +24,7 @@
 - [Transfer Learning](#transfer-learning)
 - [Training Configuration](#training-configuration)
 - [Results](#results)
+  - [How to reproduce](#how-to-reproduce)
 - [Project Status](#project-status)
 - [License](#license)
 - [References](#references)
@@ -35,10 +36,12 @@ This project implements the ResNet-50 architecture from scratch in PyTorch and t
 
 Two models are included so they can be compared on the same data: a ResNet-50 trained from scratch (`oxiii_pet.model`), and a `torchvision` ResNet-50 pretrained on ImageNet and fine-tuned on the pet dataset (`oxiii_pet.transfer_learning`).
 
-| Model (37 breeds, official test split) | Best test accuracy | Final epoch |
+| Model (37 breeds, official test split) | Best test accuracy (epoch) | Final epoch |
 |----------------------------------------|:------------------:|:-----------:|
-| ResNet-50 from scratch, 50 epochs | 38.95% | 38.76% |
-| Pretrained ResNet-50, fine-tuned, 10 epochs | **93.19%** | 93.13% |
+| ResNet-50 from scratch, 50 epochs | 36.09% (48) | 35.92% |
+| Pretrained ResNet-50, fine-tuned, 10 epochs | **93.35%** (9) | **93.35%** |
+
+Numbers from the logged re-run of 2026-11-13 (seed 42, RTX 3050 Laptop GPU); see [`results/summary.md`](results/summary.md) and [How to reproduce](#how-to-reproduce).
 
 ## Features
 
@@ -48,8 +51,10 @@ Two models are included so they can be compared on the same data: a ResNet-50 tr
 - **Train / evaluation splits:** `trainval.txt` for training and `test.txt` for evaluation.
 - **Two task modes:** 37-breed classification (default) or binary cat-vs-dog classification, selected with `--num_class`.
 - **Training script with CLI:** configurable epochs, batch size, data directory and log directory.
-- **Experiment tracking:** loss and accuracy curves, plus a per-epoch confusion matrix, logged to TensorBoard.
-- **Checkpointing and resume:** the latest and the best checkpoints (model, optimizer and scheduler state) are saved automatically, and training can be resumed from either.
+- **Experiment tracking:** every run gets its own folder (`runs/<date>_<experiment>/`) with a `train.log`, a `metrics.csv` (one row per epoch), a `config.json` (all arguments, seed, library versions, GPU and git commit), a `summary.json`, and TensorBoard logs (train/test loss and accuracy, learning rate, per-epoch confusion matrix). tqdm shows loss, accuracy and learning rate live.
+- **Reproducibility:** seeds for Python, NumPy, PyTorch and the DataLoader (`--seed`, default 42), recorded in `config.json`.
+- **Checkpointing and resume:** the latest and the best checkpoints are saved automatically for both models; the from-scratch run can be resumed from either.
+- **Inference script:** classify one image or a whole folder with the same preprocessing as evaluation, printing the top-3 breeds.
 - **CPU and GPU support:** training and evaluation run on CUDA when available and fall back to the CPU otherwise.
 - **Installable package managed with [uv](https://docs.astral.sh/uv/):** `uv sync` installs the locked dependencies and the project in editable mode, so `oxiii_pet` is importable from anywhere.
 
@@ -60,6 +65,7 @@ Two models are included so they can be compared on the same data: a ResNet-50 tr
 ├── LICENSE
 ├── pyproject.toml
 ├── uv.lock
+├── results/                              # summary.md, curves (PNG) and per-run logs/metrics
 └── src/
     └── oxiii_pet/
         ├── dataset/
@@ -68,11 +74,15 @@ Two models are included so they can be compared on the same data: a ResNet-50 tr
         ├── model/                        # ResNet-50 from scratch
         │   ├── models.py                 # Bottleneck block and Resnet50
         │   ├── train.py                  # Training and evaluation entry point
-        │   └── test.py                   # Single-image inference (experimental)
-        └── transfer_learning/            # Pretrained ResNet-50 fine-tuning
-            ├── transfer_learning.py      # MyModel: pretrained backbone + new head
-            ├── train.py                  # Fine-tuning and evaluation entry point
-            └── test.py                   # Single-image inference (experimental)
+        │   └── test.py                   # Inference on an image or a folder
+        ├── transfer_learning/            # Pretrained ResNet-50 fine-tuning
+        │   ├── transfer_learning.py      # MyModel: pretrained backbone + new head
+        │   ├── train.py                  # Fine-tuning and evaluation entry point
+        │   └── test.py                   # Inference on an image or a folder
+        └── utils/
+            ├── run_utils.py              # Seeding, run folder, logging, metrics.csv, train/eval loop
+            ├── inference.py              # Shared preprocessing and checkpoint loading for test.py
+            └── plot_metrics.py           # Loss/accuracy curves from metrics.csv
 ```
 
 ## Model Architecture
@@ -217,17 +227,22 @@ uv run python -m oxiii_pet.model.train --epochs 50 --batch_size 32 --dir data
 | `--batch_size` | `-b` | `8` | Batch size for both splits |
 | `--images_size` | `-i` | `224` | Input image size |
 | `--dir` | `-d` | `$DATA_DIR` or `data` | Dataset root directory |
-| `--logging` | `-l` | `tensorboard` | Directory for TensorBoard logs |
-| `--trained_model` | `-t` | `trained_model` | Directory where checkpoints are saved |
+| `--run_dir` | `-r` | `runs/<date>_scratch_<n>cls` | Run folder for `train.log`, `metrics.csv`, `config.json`, `summary.json` |
+| `--logging` | `-l` | `<run_dir>/tensorboard` | Directory for TensorBoard logs |
+| `--trained_model` | `-t` | `<run_dir>/checkpoints` | Directory where checkpoints are saved |
 | `--checkpoint` | `-c` | none | Checkpoint to resume training from |
 | `--num_class` | `-n` | `37` | Number of classes: `37` for breeds, `2` for cat vs dog |
+| `--clip` | `-cl` | `0` | Gradient-norm clipping threshold; `0` disables clipping |
+| `--seed` | `-s` | `42` | Random seed |
+| `--num_workers` | `-w` | `4` | DataLoader worker processes |
 
-After every epoch the model is evaluated on the test split. Two checkpoints are written to the `--trained_model` directory: `last_model.pth` after every epoch, and `best_model.pth` whenever test accuracy improves. Each checkpoint stores the epoch, model, optimizer and scheduler state, and the best accuracy.
+After every epoch the model is evaluated on the test split. Two checkpoints are written: `last_model.pth` after every epoch, and `best_model.pth` whenever test accuracy improves. Each checkpoint stores the epoch, model, optimizer and scheduler state, the best accuracy and epoch, and the class names.
 
-To resume an interrupted run, pass the checkpoint and keep the same `--epochs` value so the learning-rate schedule stays consistent:
+To resume an interrupted run, pass the checkpoint and the same `--run_dir` and `--epochs` so the learning-rate schedule stays consistent and `metrics.csv` keeps growing:
 
 ```bash
-uv run python -m oxiii_pet.model.train --epochs 50 --batch_size 32 --checkpoint trained_model/last_model.pth
+uv run python -m oxiii_pet.model.train --epochs 50 --batch_size 32 \
+    --run_dir runs/<run> --checkpoint runs/<run>/checkpoints/last_model.pth
 ```
 
 To train the binary cat-vs-dog task instead of the 37 breeds, pass `--num_class 2`:
@@ -239,21 +254,42 @@ uv run python -m oxiii_pet.model.train --epochs 50 --batch_size 32 --num_class 2
 ### 3. Monitor training
 
 ```bash
-uv run tensorboard --logdir tensorboard
+uv run tensorboard --logdir runs/
 ```
 
-Logged scalars: `Train/Loss`, `Validation/Accuracy`.
+Logged scalars: `Train/Loss` (per iteration), `Train/EpochLoss`, `Train/Accuracy`, `Validation/Loss`, `Validation/Accuracy`, `LR`. ("Validation" is the official test split.)
 
-Logged images: `confusion_matrix`, the confusion matrix of the test split, written once per epoch by `plot_confusion_matrix` in `train.py` (scikit-learn computes the matrix and matplotlib draws it). Open the **Images** tab and drag the slider to see how the errors change during training. Rows are the true classes and columns are the predicted classes; each cell shows the fraction of that true class predicted as the column class, so the diagonal is the per-class recall.
+Logged images: `confusion_matrix`, the confusion matrix of the test split with breed names on the axes, written once per epoch by `plot_confusion_matrix` in `utils/run_utils.py` (scikit-learn computes the matrix and matplotlib draws it). Open the **Images** tab and drag the slider to see how the errors change during training. Rows are the true classes and columns are the predicted classes; each cell shows the fraction of that true class predicted as the column class, so the diagonal is the per-class recall.
 
-### 4. Load a trained checkpoint
+### 4. Classify images
+
+Both `test.py` scripts apply the evaluation preprocessing (resize to 224 × 224, ImageNet mean/std normalization) and print the top-3 classes for one image or every image in a folder. Class names are read from the checkpoint (or from the dataset annotations for older checkpoints), in the dataset's label order.
+
+```bash
+# From-scratch model; -c takes a .pth file or a run folder (default: newest runs/*scratch*/checkpoints/best_model.pth)
+uv run python -m oxiii_pet.model.test -c runs/<run> -t test_images
+
+# Transfer-learning model (default: newest runs/*transfer*/checkpoints/best_model.pth); add -n 2 for cat vs dog
+uv run python -m oxiii_pet.transfer_learning.test -c runs/<run> -t test_images/1.jpg
+```
+
+| Argument | Short | Default | Description |
+|----------|:-----:|---------|-------------|
+| `--checkpoint` | `-c` | newest best checkpoint under `runs/` | `.pth` file or run folder |
+| `--test_path` | `-t` | `test_images` | Image file or folder |
+| `--num_class` | `-n` | `37` | Must match the checkpoint |
+| `--images_size` | `-i` | `224` | Input image size |
+| `--data_dir` | `-d` | `$DATA_DIR` or `data` | Only used for class names if the checkpoint has none |
+| `--version` | `-v` | `2` | Transfer-learning test only: ImageNet weights version of the backbone |
+
+### 5. Load a trained checkpoint in Python
 
 ```python
 import torch
 from oxiii_pet.model.models import Resnet50
 
 model = Resnet50(num_classes=37)  # use 2 if you trained with --num_class 2
-checkpoint = torch.load("trained_model/best_model.pth", map_location="cpu")
+checkpoint = torch.load("runs/<run>/checkpoints/best_model.pth", map_location="cpu")
 model.load_state_dict(checkpoint["model"])
 model.eval()
 
@@ -277,11 +313,8 @@ Freezing parameters with `requires_grad=False` does not stop BatchNorm from upda
 
 **Train**
 
-The script saves to `--trained_model` but does not create the folder, so create it first:
-
 ```bash
-mkdir -p trained_model
-uv run python src/oxiii_pet/transfer_learning/train.py -n 37 --epoch 10 --batch_size 32
+uv run python -m oxiii_pet.transfer_learning.train -n 37 --epoch 10 --batch_size 32
 ```
 
 | Argument | Short | Default | Description |
@@ -292,9 +325,12 @@ uv run python src/oxiii_pet/transfer_learning/train.py -n 37 --epoch 10 --batch_
 | `--num_classes` | `-n` | `37` | Number of classes: `37` for breeds, `2` for cat vs dog |
 | `--batch_size` | `-b` | `32` | Batch size for both splits |
 | `--version` | `-v` | `2` | ImageNet-1K weights: `1` = V1, `2` = V2 |
-| `--trained_model` | `-t` | `trained_model` | Directory for the saved weights |
+| `--run_dir` | `-r` | `runs/<date>_transfer_<n>cls` | Run folder for logs, metrics, config and TensorBoard |
+| `--trained_model` | `-t` | `<run_dir>/checkpoints` | Directory for the saved weights (created automatically) |
+| `--seed` | | `42` | Random seed |
+| `--num_workers` | `-w` | `4` | DataLoader worker processes |
 
-After every epoch the model is evaluated on the test split and `fine_tuning_model.pth` (the model `state_dict` only, overwritten each epoch) is saved. Unlike the from-scratch script, this one does not log to TensorBoard, keep a best checkpoint or support resuming.
+After every epoch the model is evaluated on the test split. `last_model.pth` is written every epoch and `best_model.pth` whenever test accuracy improves; both store the model weights, epoch, accuracy, class names and weights version. The run folder gets the same `train.log`, `metrics.csv`, `config.json`, `summary.json` and TensorBoard logs as the from-scratch script. Resuming is not supported.
 
 ## Training Configuration
 
@@ -314,29 +350,30 @@ The transfer-learning script uses the same optimizer, schedule, transforms and D
 
 ## Results
 
+All results come from the logged re-run of 2026-11-13: seed 42, one NVIDIA RTX 3050 6GB Laptop GPU, PyTorch 2.14.1+cu130, commit `0cfedcf`. Each run's `config.json`, `metrics.csv`, `summary.json` and `train.log` are in [`results/`](results/), together with loss/accuracy curves; [`results/summary.md`](results/summary.md) has the combined table.
+
+The repo has no separate validation split: the official `test.txt` split is used both to pick `best_model.pth` and to report accuracy. The **best** epoch is therefore slightly optimistic; the **final** epoch (`last_model.pth`) is the unbiased number. All runs use a single seed, and from-scratch accuracy moves 1–2 points between consecutive epochs, so treat differences of that size as noise.
+
 ### From scratch (37 breeds)
 
-ResNet-50 trained from scratch (no pretrained weights) for 50 epochs with batch size 32, using the configuration above. Evaluation is on the official `test.txt` split.
+ResNet-50 trained from scratch (no pretrained weights) for 50 epochs with batch size 32, using the configuration above.
 
 | Metric | Value |
 |--------|-------|
-| Best test accuracy | **38.95%** (epoch 49) |
-| Final test accuracy (epoch 50) | 38.76% |
-| Lowest test loss | 2.481 (epoch 28) |
-| Final test loss | 2.670 |
+| Best test accuracy (`best_model.pth`) | **36.09%** (epoch 48) |
+| Final test accuracy (`last_model.pth`, epoch 50) | 35.92% |
+| Lowest test loss | 2.679 (epoch 26) |
+| Final test loss | 3.711 |
+| Final training accuracy (augmented images) | 77.96% |
 | Random-guess reference | 2.7% accuracy, loss ≈ 3.61 |
+| Training time | ≈ 53 s/epoch (median); 61.5 min in total, because epochs 1–6 shared the GPU with another job |
 
-Effect of the training setup, measured at epoch 10:
-
-| Setup | Test loss | Test accuracy |
-|-------|:---------:|:-------------:|
-| Baseline: no normalization or augmentation, constant learning rate `1e-3` | 3.639 | 6.65% |
-| Current: normalization, augmentation, learning rate `1e-2` with cosine decay, weight decay `1e-4` | 3.663 | 11.97% |
+![From-scratch curves](results/A_scratch_37cls_curves.png)
 
 **Notes**
 
-- The model overfits: the logged training loss (last batch of each epoch) drops to about 0.3–0.6, while the test loss stops improving after roughly epoch 28 and stays around 2.6–2.7.
-- The test split is used both to pick the best checkpoint and to report accuracy, so the numbers are slightly optimistic; there is no separate validation split.
+- The model overfits: training accuracy reaches 78% while test accuracy levels off around 35–36%, and the test loss is lowest at epoch 26 and drifts upward afterwards.
+- While the learning rate is high, the test loss has isolated spikes (epochs 3, 14 and 22, up to 16.2) that recover in the next epoch; they fade as the cosine schedule lowers the learning rate.
 - Training a 25M-parameter network from scratch on about 3.7k images is data-limited; starting from pretrained weights removes most of that limit (see the transfer-learning results below).
 
 ### Transfer learning (37 breeds)
@@ -345,29 +382,71 @@ Fine-tuning the pretrained ResNet-50 (`IMAGENET1K_V2`, trainable head + `layer4`
 
 | Metric | Value |
 |--------|-------|
-| Best test accuracy | **93.19%** (epoch 8) |
-| Final test accuracy (epoch 10) | 93.13% |
-| Lowest test loss | 0.249 (epoch 8) |
-| Final test loss | 0.268 |
-| From-scratch reference | 38.95% best, 2.481 lowest test loss |
+| Best test accuracy (`best_model.pth`) | **93.35%** (epoch 9) |
+| Final test accuracy (`last_model.pth`, epoch 10) | 93.35% |
+| Lowest test loss | 0.280 (epoch 9) |
+| Final test loss | 0.288 |
+| Final training accuracy (augmented images) | 99.43% |
+| From-scratch reference | 36.09% best, 2.679 lowest test loss |
+| Training time | 5.2 min (≈ 30 s/epoch) |
 
 | Epoch | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
 |-------|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:--:|
-| Test accuracy (%) | 77.68 | 86.73 | 88.03 | 88.23 | 87.00 | 91.03 | 92.45 | 93.19 | 93.16 | 93.13 |
-| Test loss | 0.722 | 0.408 | 0.375 | 0.438 | 0.493 | 0.320 | 0.259 | 0.249 | 0.269 | 0.268 |
+| Test accuracy (%) | 75.01 | 84.71 | 83.40 | 89.70 | 89.53 | 90.35 | 92.89 | 92.48 | 93.35 | 93.35 |
+| Test loss | 0.874 | 0.484 | 0.541 | 0.349 | 0.390 | 0.364 | 0.310 | 0.323 | 0.280 | 0.288 |
 
-One epoch takes about 17–19 s on the machine used for this run.
+![Transfer-learning curves (37 breeds)](results/B_transfer_37cls_curves.png)
 
 **Notes**
 
-- Pretraining on ImageNet raises 37-breed test accuracy from about 39% to about 93%, and one epoch already beats the 50-epoch from-scratch run (77.7% vs 38.95%).
-- The best epoch (8) is chosen by test accuracy, which is slightly optimistic. The script saves only the last epoch, so the saved `fine_tuning_model.pth` is the epoch-10 model (93.13%).
-- The training loss (last batch of each epoch) falls to about 0.003–0.03 while the test loss stays near 0.25–0.27 from epoch 8 on, so some overfitting remains.
-- The same setup also reaches 99.8–99.95% on the binary cat-vs-dog task (`-n 2`, logged for epochs 2–6). That task is easy for ImageNet features, so it mostly serves as a sanity check.
+- Pretraining on ImageNet raises 37-breed test accuracy from about 36% to about 93%, and one epoch already beats the 50-epoch from-scratch run (75.0% vs 36.1%).
+- Best and final epoch reach the same accuracy here (93.35%), so the test-split selection bias does not change the headline number for this run.
+- Training accuracy reaches 99.4% while test loss stays near 0.28–0.29 in the last epochs, so some overfitting remains.
+
+### Transfer learning (cat vs dog)
+
+The same setup with `-n 2` (10 epochs, batch size 32, seed 42).
+
+| Metric | Value |
+|--------|-------|
+| Best test accuracy (`best_model.pth`) | **99.84%** (epoch 4) |
+| Final test accuracy (`last_model.pth`, epoch 10) | 99.78% |
+| Lowest test loss | 0.006 (epoch 4) |
+| Final test loss | 0.008 |
+| Training time | 4.9 min (≈ 30 s/epoch) |
+
+Test accuracy is already 99.37% after the first epoch and stays between 99.40% and 99.84% afterwards. The task is easy for ImageNet features, so it mostly serves as a sanity check. Curves: [`results/C_transfer_2cls_curves.png`](results/C_transfer_2cls_curves.png).
+
+### How to reproduce
+
+```bash
+uv sync
+uv run python -c "import torch; print(torch.__version__, torch.cuda.is_available())"
+
+# A. From scratch, 37 breeds (≈ 45 min on an RTX 3050 Laptop GPU)
+uv run python -m oxiii_pet.model.train -e 50 -b 32 -n 37 -d data --seed 42 --run_dir runs/2026-11-13_A_scratch_37cls
+
+# B. Transfer learning, 37 breeds (≈ 5 min)
+uv run python -m oxiii_pet.transfer_learning.train -e 10 -n 37 -b 32 -v 2 -d data --seed 42 --run_dir runs/2026-11-13_B_transfer_37cls
+
+# C. Transfer learning, cat vs dog (≈ 5 min)
+uv run python -m oxiii_pet.transfer_learning.train -e 10 -n 2 -b 32 -v 2 -d data --seed 42 --run_dir runs/2026-11-13_C_transfer_2cls
+
+# Sanity check on the bundled images
+uv run python -m oxiii_pet.model.test -c runs/2026-11-13_A_scratch_37cls -t test_images
+uv run python -m oxiii_pet.transfer_learning.test -c runs/2026-11-13_B_transfer_37cls -t test_images
+uv run python -m oxiii_pet.transfer_learning.test -n 2 -c runs/2026-11-13_C_transfer_2cls -t test_images
+
+# Curves and TensorBoard
+uv run python -m oxiii_pet.utils.plot_metrics runs/2026-11-13_A_scratch_37cls -o results/A_scratch_37cls_curves.png
+uv run tensorboard --logdir runs/
+```
+
+cuDNN is not forced into deterministic mode, so a re-run on a GPU will not reproduce these numbers bit-for-bit.
 
 ## Project Status
 
-The project is complete: data pipeline, ResNet-50 from scratch, training with TensorBoard logging and checkpointing, and a transfer-learning variant. On the 37-breed task the from-scratch model reaches about 39% test accuracy and the fine-tuned pretrained model about 93%.
+The project is complete: data pipeline, ResNet-50 from scratch, training with TensorBoard logging and checkpointing, and a transfer-learning variant. On the 37-breed task the from-scratch model reaches about 36% test accuracy and the fine-tuned pretrained model about 93% (re-run of 2026-11-13, see [Results](#results)).
 
 **Done**
 
@@ -377,12 +456,13 @@ The project is complete: data pipeline, ResNet-50 from scratch, training with Te
 - [x] Installable package with dependencies declared in `pyproject.toml` and locked with uv (`uv.lock`)
 - [x] Input normalization and data augmentation (ImageNet mean/std, random resized crop, horizontal flip)
 - [x] Cosine learning-rate schedule and weight decay
-- [x] Full 50-epoch training run with normalization and augmentation (about 39% test accuracy)
+- [x] Full 50-epoch training run with normalization and augmentation (36.09% best / 35.92% final test accuracy)
+- [x] Per-run logging: `train.log`, `metrics.csv`, `config.json` (seed, versions, git commit), TensorBoard, tqdm
 - [x] Device-agnostic training and evaluation (CPU fallback)
 - [x] Resumable training (latest and best checkpoints with optimizer and scheduler state)
 - [x] Per-epoch confusion matrix logged to TensorBoard
 - [x] Binary (cat vs dog) and 37-breed modes selectable with `--num_class`
-- [x] Transfer learning from ImageNet-pretrained ResNet-50 (frozen backbone except `layer4`, BatchNorm kept in eval mode): 93.19% best test accuracy on 37 breeds versus 38.95% from scratch
+- [x] Transfer learning from ImageNet-pretrained ResNet-50 (frozen backbone except `layer4`, BatchNorm kept in eval mode): 93.35% test accuracy on 37 breeds versus 36.09% from scratch
 
 ## License
 
