@@ -28,6 +28,12 @@ Checkpoints: `best_model.pth` = best epoch above, `last_model.pth` = final epoch
 ![B](B_transfer_37cls_curves.png)
 ![C](C_transfer_2cls_curves.png)
 
+## Confusion matrices (test split, final epoch, exported from TensorBoard)
+
+- [A. From scratch, 37 breeds](A_scratch_37cls_confusion_matrix.png)
+- [B. Transfer learning, 37 breeds](B_transfer_37cls_confusion_matrix.png)
+- [C. Transfer learning, cat vs dog](C_transfer_2cls_confusion_matrix.png)
+
 ## Notes
 
 - Single seed (42). cuDNN is not forced deterministic, so a re-run on GPU will not be bit-identical; from-scratch accuracy moved 1–2 points between consecutive epochs, so treat differences of that size as noise.

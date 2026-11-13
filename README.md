@@ -82,7 +82,8 @@ Numbers from the logged re-run of 2026-11-13 (seed 42, RTX 3050 Laptop GPU); see
         └── utils/
             ├── run_utils.py              # Seeding, run folder, logging, metrics.csv, train/eval loop
             ├── inference.py              # Shared preprocessing and checkpoint loading for test.py
-            └── plot_metrics.py           # Loss/accuracy curves from metrics.csv
+            ├── plot_metrics.py           # Loss/accuracy curves from metrics.csv
+            └── export_tb_images.py       # Export a TensorBoard image (confusion matrix) to PNG
 ```
 
 ## Model Architecture
@@ -370,6 +371,13 @@ ResNet-50 trained from scratch (no pretrained weights) for 50 epochs with batch 
 
 ![From-scratch curves](results/A_scratch_37cls_curves.png)
 
+<details>
+<summary>Confusion matrix on the test split, final epoch (from TensorBoard)</summary>
+
+![From-scratch confusion matrix, epoch 50](results/A_scratch_37cls_confusion_matrix.png)
+
+</details>
+
 **Notes**
 
 - The model overfits: training accuracy reaches 78% while test accuracy levels off around 35–36%, and the test loss is lowest at epoch 26 and drifts upward afterwards.
@@ -397,6 +405,15 @@ Fine-tuning the pretrained ResNet-50 (`IMAGENET1K_V2`, trainable head + `layer4`
 
 ![Transfer-learning curves (37 breeds)](results/B_transfer_37cls_curves.png)
 
+<details>
+<summary>Confusion matrix on the test split, final epoch (from TensorBoard)</summary>
+
+![Transfer-learning confusion matrix, 37 breeds, epoch 10](results/B_transfer_37cls_confusion_matrix.png)
+
+</details>
+
+The remaining errors are mostly between similar-looking breeds: in the final-epoch confusion matrix, `american_pit_bull_terrier` has the lowest recall (0.56) and is mostly predicted as `staffordshire_bull_terrier` (0.23) or `american_bulldog` (0.14), and `Egyptian_Mau` → `Bengal` and `Ragdoll` → `Birman` each account for 0.13 of those classes.
+
 **Notes**
 
 - Pretraining on ImageNet raises 37-breed test accuracy from about 36% to about 93%, and one epoch already beats the 50-epoch from-scratch run (75.0% vs 36.1%).
@@ -415,7 +432,16 @@ The same setup with `-n 2` (10 epochs, batch size 32, seed 42).
 | Final test loss | 0.008 |
 | Training time | 4.9 min (≈ 30 s/epoch) |
 
-Test accuracy is already 99.37% after the first epoch and stays between 99.40% and 99.84% afterwards. The task is easy for ImageNet features, so it mostly serves as a sanity check. Curves: [`results/C_transfer_2cls_curves.png`](results/C_transfer_2cls_curves.png).
+Test accuracy is already 99.37% after the first epoch and stays between 99.40% and 99.84% afterwards. The task is easy for ImageNet features, so it mostly serves as a sanity check.
+
+![Transfer-learning curves (cat vs dog)](results/C_transfer_2cls_curves.png)
+
+<details>
+<summary>Confusion matrix on the test split, final epoch (from TensorBoard)</summary>
+
+![Transfer-learning confusion matrix, cat vs dog, epoch 10](results/C_transfer_2cls_confusion_matrix.png)
+
+</details>
 
 ### How to reproduce
 
@@ -437,8 +463,9 @@ uv run python -m oxiii_pet.model.test -c runs/2026-11-13_A_scratch_37cls -t test
 uv run python -m oxiii_pet.transfer_learning.test -c runs/2026-11-13_B_transfer_37cls -t test_images
 uv run python -m oxiii_pet.transfer_learning.test -n 2 -c runs/2026-11-13_C_transfer_2cls -t test_images
 
-# Curves and TensorBoard
+# Curves, confusion-matrix export and TensorBoard
 uv run python -m oxiii_pet.utils.plot_metrics runs/2026-11-13_A_scratch_37cls -o results/A_scratch_37cls_curves.png
+uv run python -m oxiii_pet.utils.export_tb_images runs/2026-11-13_A_scratch_37cls -o results/A_scratch_37cls_confusion_matrix.png
 uv run tensorboard --logdir runs/
 ```
 
