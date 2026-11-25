@@ -18,6 +18,7 @@ from oxiii_pet.transfer_learning.transfer_learning import MyModel
 from oxiii_pet.utils.run_utils import (
     MetricsCSV, default_run_dir, final_test_evaluation, get_class_names, plot_confusion_matrix,
     run_epoch, set_seed, setup_run,
+    add_hparam_args, build_optimizer, write_val_only_summary,
 )
 
 def get_args():
@@ -36,6 +37,7 @@ def get_args():
     parser.add_argument("--split_file", type=str, default=DEFAULT_SPLIT_FILE,
                         help="JSON with the train/val image names of trainval.txt")
 
+    add_hparam_args(parser)
     args = parser.parse_args()
     return args
 
@@ -106,15 +108,16 @@ def main():
     writer = SummaryWriter(os.path.join(args.run_dir, "tensorboard"))
     metrics = MetricsCSV(os.path.join(args.run_dir, "metrics.csv"))
     num_iters = len(train_dataloader)
-    optimizer = torch.optim.SGD(model.parameters(), lr=1e-2, momentum=0.9, weight_decay=1e-4)
+    optimizer = build_optimizer(model.parameters(), args)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs)
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss()  # validation / test
+    train_criterion = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing)
     best_val_accuracy, best_epoch = -1.0, None  # so epoch 1 is always saved as best
     for epoch in range(num_epochs):
         epoch_start = time.time()
         lr = optimizer.param_groups[0]["lr"]
         train_loss, train_acc, _, _ = run_epoch(
-            model, train_dataloader, criterion, device, optimizer=optimizer,
+            model, train_dataloader, train_criterion, device, optimizer=optimizer,
             desc=f"Train {epoch + 1}/{num_epochs}", writer=writer, global_step=epoch * num_iters)
         scheduler.step()
         val_loss, val_accuracy, all_predictions, all_labels = run_epoch(
@@ -149,6 +152,9 @@ def main():
             " | new best val acc, saved best_model.pth" if is_best else "")
     writer.close()
 
+    if args.no_test:
+        write_val_only_summary(args.run_dir, logger, extra={"seed": args.seed})
+        return
     final_test_evaluation(
         model, test_dataloader, criterion, device, args.trained_model, args.run_dir, num_classes,
         class_names, logger, extra={"n_train": len(train_dataset), "n_val": len(val_dataset),

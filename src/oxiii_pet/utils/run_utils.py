@@ -254,3 +254,44 @@ def run_epoch(model, loader, criterion, device, optimizer=None, desc="", clip=0.
                 postfix["lr"] = f"{lr:.2e}"
             bar.set_postfix(postfix)
     return total_loss / seen, correct / seen, torch.cat(all_preds), torch.cat(all_labels)
+
+
+# ---------------------------------------------------------------- hyperparameters
+def add_hparam_args(parser):
+    """CLI flags for the tunable hyperparameters. Defaults reproduce the original (untuned) runs."""
+    g = parser.add_argument_group("hyperparameters")
+    g.add_argument("--optimizer", choices=["sgd", "adamw"], default="sgd")
+    g.add_argument("--lr", type=float, default=1e-2, help="peak learning rate (cosine-annealed to 0)")
+    g.add_argument("--weight_decay", "--wd", type=float, default=1e-4)
+    g.add_argument("--momentum", type=float, default=0.9, help="SGD momentum (ignored by AdamW)")
+    g.add_argument("--label_smoothing", type=float, default=0.0,
+                   help="label smoothing of the training loss; validation/test loss stays plain cross-entropy")
+    g.add_argument("--no_test", action="store_true",
+                   help="skip the test split entirely (used for tuning runs); summary.json holds validation only")
+    return parser
+
+
+def build_optimizer(params, args):
+    params = [p for p in params if p.requires_grad]
+    if args.optimizer == "adamw":
+        return torch.optim.AdamW(params, lr=args.lr, weight_decay=args.weight_decay)
+    return torch.optim.SGD(params, lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+
+
+def write_val_only_summary(run_dir, logger, extra=None):
+    """summary.json for a tuning run: validation metrics only, the test split is never loaded."""
+    df = pd.read_csv(os.path.join(run_dir, "metrics.csv"))
+    best = df.loc[df["val_acc"].idxmax()]  # first epoch reaching the max, like best_model.pth
+    last = df.iloc[-1]
+    summary = {
+        "val_best_epoch": int(best["epoch"]), "val_best_acc": float(best["val_acc"]),
+        "val_best_loss": float(best["val_loss"]), "last_epoch": int(last["epoch"]),
+        "val_acc_at_last": float(last["val_acc"]), "train_acc_at_last": float(last["train_acc"]),
+        "train_time_s": round(float(df["epoch_time_s"].sum()), 1),
+        "note": "Tuning run (--no_test): the test split was not evaluated.",
+    }
+    summary.update(extra or {})
+    with open(os.path.join(run_dir, "summary.json"), "w") as f:
+        json.dump(summary, f, indent=2)
+    logger.info("Summary (validation only): %s", json.dumps(summary))
+    return summary
