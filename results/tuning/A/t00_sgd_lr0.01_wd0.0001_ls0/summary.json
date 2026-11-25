@@ -1,0 +1,11 @@
+{
+  "val_best_epoch": 20,
+  "val_best_acc": 0.202446,
+  "val_best_loss": 2.954498,
+  "last_epoch": 20,
+  "val_acc_at_last": 0.202446,
+  "train_acc_at_last": 0.26019,
+  "train_time_s": 726.3,
+  "note": "Tuning run (--no_test): the test split was not evaluated.",
+  "seed": 42
+}

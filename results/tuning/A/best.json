@@ -1,0 +1,22 @@
+{
+  "exp": "A",
+  "selection": "highest best-epoch validation accuracy, seed 42; ties keep the earlier trial",
+  "trial": "t07_adamw_lr0.001_wd0.05_ls0",
+  "val_best_acc": 0.35462,
+  "hparams": {
+    "optimizer": "adamw",
+    "lr": 0.001,
+    "weight_decay": 0.05,
+    "label_smoothing": 0.0
+  },
+  "baseline_trial": "t00_sgd_lr0.01_wd0.0001_ls0",
+  "baseline_val_best_acc": 0.202446,
+  "fixed_args": [
+    "-e",
+    "20",
+    "-b",
+    "32",
+    "-n",
+    "37"
+  ]
+}

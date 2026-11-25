@@ -1,0 +1,16 @@
+2026-11-24 17:19:55 | INFO | Run dir: runs/tuning/B/t13_adamw_lr0.0001_wd0.01_ls0.1
+2026-11-24 17:19:55 | INFO | Config: {"experiment": "transfer", "args": {"data_path": "data", "epoch": 10, "image_size": 224, "num_classes": 37, "batch_size": 32, "version": 2, "run_dir": "runs/tuning/B/t13_adamw_lr0.0001_wd0.01_ls0.1", "trained_model": "runs/tuning/B/t13_adamw_lr0.0001_wd0.01_ls0.1/checkpoints", "seed": 42, "num_workers": 4, "split_file": "splits/trainval_80_20_seed0.json", "optimizer": "adamw", "lr": 0.0001, "weight_decay": 0.01, "momentum": 0.9, "label_smoothing": 0.1, "no_test": true}, "seed": 42, "start_time": "2026-11-24T17:19:55", "git_commit": "8b9d87f356c4dbfc222c1bb378ef20f02b36066a", "git_dirty": true, "python": "3.10.12", "torch": "2.14.1+cu130", "torchvision": "0.29.1+cu130", "cuda": "13.0", "cudnn": 92400, "cuda_available": true, "gpu": "NVIDIA GeForce RTX 3050 6GB Laptop GPU", "cpu_count": 4, "deterministic_note": "Seeded, but cuDNN kernels are not forced deterministic; GPU runs are not bit-exact."}
+2026-11-24 17:19:55 | INFO | Device: cuda
+2026-11-24 17:19:55 | INFO | Trainable params: 17100837 / 25644133
+2026-11-24 17:19:55 | INFO | Train samples: 2944 | Val samples: 736 | Test samples: 3669 (test used once, after training)
+2026-11-24 17:20:13 | INFO | Epoch 1/10 | lr 1.000e-04 | train loss 1.8182 acc 0.6396 | val loss 0.4534 acc 0.8913 | 17.4s | new best val acc, saved best_model.pth
+2026-11-24 17:20:32 | INFO | Epoch 2/10 | lr 9.755e-05 | train loss 0.9352 acc 0.9300 | val loss 0.2936 acc 0.9171 | 19.4s | new best val acc, saved best_model.pth
+2026-11-24 17:20:49 | INFO | Epoch 3/10 | lr 9.045e-05 | train loss 0.8458 acc 0.9596 | val loss 0.2617 acc 0.9511 | 16.8s | new best val acc, saved best_model.pth
+2026-11-24 17:21:08 | INFO | Epoch 4/10 | lr 7.939e-05 | train loss 0.7841 acc 0.9803 | val loss 0.2350 acc 0.9484 | 19.5s
+2026-11-24 17:21:25 | INFO | Epoch 5/10 | lr 6.545e-05 | train loss 0.7591 acc 0.9857 | val loss 0.2632 acc 0.9443 | 16.5s
+2026-11-24 17:21:44 | INFO | Epoch 6/10 | lr 5.000e-05 | train loss 0.7387 acc 0.9918 | val loss 0.2155 acc 0.9592 | 19.6s | new best val acc, saved best_model.pth
+2026-11-24 17:22:01 | INFO | Epoch 7/10 | lr 3.455e-05 | train loss 0.7220 acc 0.9969 | val loss 0.2283 acc 0.9524 | 16.5s
+2026-11-24 17:22:20 | INFO | Epoch 8/10 | lr 2.061e-05 | train loss 0.7158 acc 0.9980 | val loss 0.2234 acc 0.9565 | 19.6s
+2026-11-24 17:22:37 | INFO | Epoch 9/10 | lr 9.549e-06 | train loss 0.7109 acc 0.9993 | val loss 0.2218 acc 0.9565 | 16.6s
+2026-11-24 17:22:56 | INFO | Epoch 10/10 | lr 2.447e-06 | train loss 0.7104 acc 0.9993 | val loss 0.2186 acc 0.9565 | 19.4s
+2026-11-24 17:22:56 | INFO | Summary (validation only): {"val_best_epoch": 6, "val_best_acc": 0.959239, "val_best_loss": 0.215454, "last_epoch": 10, "val_acc_at_last": 0.956522, "train_acc_at_last": 0.999321, "train_time_s": 181.3, "note": "Tuning run (--no_test): the test split was not evaluated.", "seed": 42}

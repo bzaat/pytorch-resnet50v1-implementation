@@ -1,0 +1,25 @@
+2026-11-24 17:59:34 | INFO | Run dir: runs/tuning/A/t02_sgd_lr0.05_wd0.0001_ls0
+2026-11-24 17:59:34 | INFO | Config: {"experiment": "scratch", "args": {"epochs": 20, "images_size": 224, "batch_size": 32, "dir": "data", "run_dir": "runs/tuning/A/t02_sgd_lr0.05_wd0.0001_ls0", "logging": "runs/tuning/A/t02_sgd_lr0.05_wd0.0001_ls0/tensorboard", "trained_model": "runs/tuning/A/t02_sgd_lr0.05_wd0.0001_ls0/checkpoints", "checkpoint": null, "num_class": 37, "clip": 0.0, "seed": 42, "num_workers": 4, "split_file": "splits/trainval_80_20_seed0.json", "optimizer": "sgd", "lr": 0.05, "weight_decay": 0.0001, "momentum": 0.9, "label_smoothing": 0.0, "no_test": true}, "seed": 42, "start_time": "2026-11-24T17:59:33", "git_commit": "8b9d87f356c4dbfc222c1bb378ef20f02b36066a", "git_dirty": true, "python": "3.10.12", "torch": "2.14.1+cu130", "torchvision": "0.29.1+cu130", "cuda": "13.0", "cudnn": 92400, "cuda_available": true, "gpu": "NVIDIA GeForce RTX 3050 6GB Laptop GPU", "cpu_count": 4, "deterministic_note": "Seeded, but cuDNN kernels are not forced deterministic; GPU runs are not bit-exact."}
+2026-11-24 17:59:34 | INFO | Device: cuda
+2026-11-24 17:59:34 | INFO | Train samples: 2944 | Val samples: 736 | Test samples: 3669 (test used once, after training)
+2026-11-24 18:00:14 | INFO | Epoch 1/20 | lr 5.000e-02 | train loss 7.0851 acc 0.0224 | val loss 3.6835 acc 0.0245 | 39.6s | new best val acc, saved best_model.pth
+2026-11-24 18:00:50 | INFO | Epoch 2/20 | lr 4.969e-02 | train loss 3.9687 acc 0.0292 | val loss 4.3033 acc 0.0258 | 36.1s | new best val acc, saved best_model.pth
+2026-11-24 18:01:26 | INFO | Epoch 3/20 | lr 4.878e-02 | train loss 3.7748 acc 0.0309 | val loss 4.6510 acc 0.0258 | 36.1s
+2026-11-24 18:02:02 | INFO | Epoch 4/20 | lr 4.728e-02 | train loss 3.6839 acc 0.0292 | val loss 3.6496 acc 0.0367 | 36.3s | new best val acc, saved best_model.pth
+2026-11-24 18:02:35 | INFO | Epoch 5/20 | lr 4.523e-02 | train loss 3.6338 acc 0.0353 | val loss 3.6365 acc 0.0326 | 33.0s
+2026-11-24 18:03:12 | INFO | Epoch 6/20 | lr 4.268e-02 | train loss 3.6125 acc 0.0380 | val loss 3.6143 acc 0.0448 | 37.4s | new best val acc, saved best_model.pth
+2026-11-24 18:03:48 | INFO | Epoch 7/20 | lr 3.969e-02 | train loss 3.5886 acc 0.0438 | val loss 3.6287 acc 0.0489 | 35.9s | new best val acc, saved best_model.pth
+2026-11-24 18:04:24 | INFO | Epoch 8/20 | lr 3.635e-02 | train loss 3.5705 acc 0.0516 | val loss 3.5827 acc 0.0584 | 36.2s | new best val acc, saved best_model.pth
+2026-11-24 18:05:01 | INFO | Epoch 9/20 | lr 3.273e-02 | train loss 3.5343 acc 0.0537 | val loss 3.5592 acc 0.0598 | 36.1s | new best val acc, saved best_model.pth
+2026-11-24 18:05:37 | INFO | Epoch 10/20 | lr 2.891e-02 | train loss 3.4954 acc 0.0662 | val loss 3.5504 acc 0.0666 | 36.2s | new best val acc, saved best_model.pth
+2026-11-24 18:06:13 | INFO | Epoch 11/20 | lr 2.500e-02 | train loss 3.4761 acc 0.0666 | val loss 3.5018 acc 0.0720 | 36.2s | new best val acc, saved best_model.pth
+2026-11-24 18:06:49 | INFO | Epoch 12/20 | lr 2.109e-02 | train loss 3.4564 acc 0.0713 | val loss 3.5243 acc 0.0761 | 36.1s | new best val acc, saved best_model.pth
+2026-11-24 18:07:25 | INFO | Epoch 13/20 | lr 1.727e-02 | train loss 3.4158 acc 0.0690 | val loss 3.4814 acc 0.0788 | 36.3s | new best val acc, saved best_model.pth
+2026-11-24 18:08:01 | INFO | Epoch 14/20 | lr 1.365e-02 | train loss 3.4006 acc 0.0768 | val loss 3.4919 acc 0.0747 | 36.0s
+2026-11-24 18:08:37 | INFO | Epoch 15/20 | lr 1.031e-02 | train loss 3.3670 acc 0.0812 | val loss 3.4706 acc 0.0883 | 36.1s | new best val acc, saved best_model.pth
+2026-11-24 18:09:15 | INFO | Epoch 16/20 | lr 7.322e-03 | train loss 3.3478 acc 0.0927 | val loss 3.4565 acc 0.0842 | 37.5s
+2026-11-24 18:09:51 | INFO | Epoch 17/20 | lr 4.775e-03 | train loss 3.3322 acc 0.0917 | val loss 3.4256 acc 0.0897 | 36.3s | new best val acc, saved best_model.pth
+2026-11-24 18:10:27 | INFO | Epoch 18/20 | lr 2.725e-03 | train loss 3.3278 acc 0.0924 | val loss 3.4338 acc 0.0938 | 35.4s | new best val acc, saved best_model.pth
+2026-11-24 18:11:03 | INFO | Epoch 19/20 | lr 1.224e-03 | train loss 3.3005 acc 0.0961 | val loss 3.4138 acc 0.0870 | 36.1s
+2026-11-24 18:11:39 | INFO | Epoch 20/20 | lr 3.078e-04 | train loss 3.2870 acc 0.1026 | val loss 3.4226 acc 0.0883 | 36.0s
+2026-11-24 18:11:39 | INFO | Summary (validation only): {"val_best_epoch": 18, "val_best_acc": 0.09375, "val_best_loss": 3.433778, "last_epoch": 20, "val_acc_at_last": 0.088315, "train_acc_at_last": 0.102582, "train_time_s": 724.9, "note": "Tuning run (--no_test): the test split was not evaluated.", "seed": 42}
